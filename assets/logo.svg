@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="pskLogoTitle">
+  <title id="pskLogoTitle">PSK Services emblem</title>
+  <defs>
+    <clipPath id="shieldClip">
+      <path d="M20 15 H180 V115 C180 158 142 178 100 195 C58 178 20 158 20 115 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#shieldClip)">
+    <rect x="0" y="0" width="90" height="200" fill="#0B2C4D"/>
+    <rect x="90" y="0" width="55" height="200" fill="#1F9D55"/>
+    <rect x="145" y="0" width="55" height="200" fill="#F5B301"/>
+    <circle cx="100" cy="100" r="34" fill="none" stroke="#ffffff" stroke-width="8"/>
+  </g>
+  <path d="M20 15 H180 V115 C180 158 142 178 100 195 C58 178 20 158 20 115 Z" fill="none" stroke="#0B2C4D" stroke-width="4"/>
+</svg>
