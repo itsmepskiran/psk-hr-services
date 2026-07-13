@@ -340,7 +340,13 @@ ul { list-style: none; }
 }
 .project-title h3 { color: var(--navy); font-size: 1.4rem; }
 .project-title p { color: var(--muted); font-size: 0.9rem; }
-.project-logo-img { width: 48px; height: 48px; object-fit: contain; margin-left: auto; }
+.project-logo {
+  background: var(--navy-dark);
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-left: auto;
+}
+.project-logo-img { width: 200px; height: auto; max-height: 70px; object-fit: contain; display: block; }
 .project-content h4 { color: var(--navy); font-size: 1.15rem; margin-bottom: 14px; }
 .project-content > p { color: var(--muted); margin-bottom: 26px; }
 .project-features {
@@ -508,5 +514,5 @@ ul { list-style: none; }
   .approach-steps { grid-template-columns: 1fr; }
   .section { padding: 70px 0; }
   .project-header { flex-direction: column; align-items: flex-start; }
-  .project-logo-img { margin-left: 0; }
+  .project-logo { margin-left: 0; }
 }
