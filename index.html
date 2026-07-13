@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sheetal Paidimarri | PSK Services &amp; Portfolio</title>
+  <meta name="description" content="Landing page linking to the PSK Services HR &amp; Business Consulting site and Sheetal Paidimarri's personal portfolio.">
+  <link rel="icon" type="image/svg+xml" href="hr-services/assets/logo.svg">
+  <style>
+    :root {
+      --navy: #0B2C4D;
+      --green: #1F9D55;
+      --gold: #F5B301;
+      --bg: #F7F9FB;
+      --text: #1A2733;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header img {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      color: var(--navy);
+      font-size: 1.8rem;
+    }
+    p.subtitle {
+      margin: 0;
+      color: #4a5a68;
+      font-size: 1rem;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 760px;
+    }
+    a.card {
+      display: block;
+      background: #fff;
+      border: 1px solid #dfe6ec;
+      border-radius: 12px;
+      padding: 1.75rem;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 1px 3px rgba(11, 44, 77, 0.08);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    a.card:hover,
+    a.card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(11, 44, 77, 0.12);
+      border-color: var(--green);
+    }
+    a.card:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 2px;
+    }
+    .card .eyebrow {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 0.5rem;
+    }
+    .card h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.25rem;
+      color: var(--navy);
+    }
+    .card p {
+      margin: 0;
+      color: #4a5a68;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .card .go {
+      display: inline-block;
+      margin-top: 1rem;
+      font-weight: 600;
+      color: var(--navy);
+    }
+    footer {
+      margin-top: 3rem;
+      font-size: 0.85rem;
+      color: #7a8895;
+      text-align: center;
+    }
+    footer a {
+      color: var(--navy);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="hr-services/assets/logo.svg" alt="PSK Services emblem">
+    <h1>Sheetal Paidimarri</h1>
+    <p class="subtitle">HR &amp; Business Consulting, and Personal Portfolio</p>
+  </header>
+
+  <main class="cards">
+    <a class="card" href="hr-services/">
+      <span class="eyebrow">Business</span>
+      <h2>PSK Services</h2>
+      <p>HR &amp; business consulting for organizations &mdash; talent, operations, and growth advisory (Part of BMG Enterprises).</p>
+      <span class="go">Visit site &rarr;</span>
+    </a>
+
+    <a class="card" href="portfolio/">
+      <span class="eyebrow">Personal</span>
+      <h2>Portfolio</h2>
+      <p>Sheetal Paidimarri &mdash; HR, Business Consultant &amp; Innovation Leader. Background, experience, and work.</p>
+      <span class="go">Visit portfolio &rarr;</span>
+    </a>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Sheetal Paidimarri. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
