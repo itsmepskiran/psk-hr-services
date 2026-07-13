@@ -1,559 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sheetal Paidimarri - HR, Business Consultant & Innovation Leader</title>
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sheetal Paidimarri | HR, Business Consultant &amp; Innovation Leader</title>
+<meta name="description" content="Sheetal Paidimarri &mdash; independent HR &amp; Business Consultant with ~17 years in talent acquisition, and founder of Skreenit, an AI-powered hiring automation platform.">
+<link rel="icon" href="../hr-services/assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <h2>Sheetal Paidimarri</h2>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="#home" class="nav-link">Home</a></li>
-                <li><a href="#about" class="nav-link">About</a></li>
-                <li><a href="#experience" class="nav-link">Experience</a></li>
-                <li><a href="#projects" class="nav-link">Projects</a></li>
-                <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
-                <li><a href="#contact" class="nav-link">Contact</a></li>
-            </ul>
-            <div class="hamburger">
-                <span class="bar"></span>
-                <span class="bar"></span>
-                <span class="bar"></span>
-            </div>
-        </div>
+
+<header class="site-header" id="header">
+  <div class="container header-inner">
+    <a href="#home" class="brand">
+      <img src="../hr-services/assets/profile-photo.jpg" alt="Sheetal Paidimarri" class="brand-mark">
+      <span class="brand-text">Sheetal <strong>Paidimarri</strong></span>
+    </a>
+
+    <nav class="nav" id="nav">
+      <a href="#home">Home</a>
+      <a href="#about">About</a>
+      <a href="#experience">Experience</a>
+      <a href="#projects">Projects</a>
+      <a href="#testimonials">Testimonials</a>
+      <a href="#contact">Contact</a>
+      <a href="../hr-services/index.html">HR Services</a>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-container">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <h1 class="hero-title">
-                        <span class="gradient-text">Transforming HR</span><br>
-                        Through Innovation
-                    </h1>
-                    <p class="hero-description">
-                        Independent HR, Business Consultant with approximately 2 decades of expertise in Talent Acquisition, 
-                        pioneering the future of hiring with AI-powered solutions.
-                    </p>
-                    <div class="hero-buttons">
-                        <a href="#projects" class="btn btn-primary">
-                            <i class="fas fa-rocket"></i>
-                            View My Work
-                        </a>
-                        <a href="#contact" class="btn btn-secondary">
-                            <i class="fas fa-envelope"></i>
-                            Get In Touch
-                        </a>
-                    </div>
-                </div>
-                <div class="hero-image">
-                    <div class="profile-card">
-                        <div class="profile-avatar">
-                            <img src="profile-photo.jpg" alt="Sheetal Paidimarri" class="profile-photo">
-                            <div class="avatar-fallback">
-                                <i class="fas fa-user-tie"></i>
-                            </div>
-                        </div>
-                        <div class="profile-info">
-                            <h3>Sheetal Paidimarri</h3>
-                            <p>HR Innovation Leader</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <a href="#contact" class="btn btn-gold header-cta">Get in Touch</a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1920&q=80');"></div>
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+      <div>
+        <p class="eyebrow">HR &amp; Business Consultant &mdash; Innovation Leader</p>
+        <h1>Transforming Hiring<br>Through <span class="text-gold">Innovation</span></h1>
+        <p class="hero-sub">Independent HR &amp; Business Consultant with approximately 17 years of expertise in talent acquisition, pioneering the future of hiring with AI-powered solutions.</p>
+        <div class="hero-actions">
+          <a href="#projects" class="btn btn-gold">View My Work</a>
+          <a href="#contact" class="btn btn-outline">Get In Touch</a>
         </div>
-    </section>
-
-    <!-- About Section -->
-    <section id="about" class="about">
-        <div class="container">
-            <div class="section-header">
-                <h2>About Me</h2>
-                <p>Passionate about revolutionizing the hiring process through technology and innovation</p>
-            </div>
-            <div class="about-content">
-                <div class="about-text">
-                    <h3>2 decades of HR Excellence</h3>
-                    <p>
-                        As an independent HR consultant, I bring nearly two decades of experience in talent acquisition 
-                        and human resources management. My journey has been focused on understanding the evolving needs 
-                        of modern organizations and creating innovative solutions that bridge the gap between talent and opportunity.
-                    </p>
-                    <p>
-                        Currently, I'm working on the development of Skreenit, a groundbreaking HR automation platform 
-                        that promises to reduce hiring timeframes by 70% while significantly boosting hiring team productivity.
-                    </p>
-                </div>
-                <div class="skills-grid">
-                    <div class="skill-item">
-                        <i class="fas fa-users"></i>
-                        <h4>Talent Acquisition</h4>
-                        <p>Expert in identifying and attracting top talent across industries</p>
-                    </div>
-                    <div class="skill-item">
-                        <i class="fas fa-cogs"></i>
-                        <h4>HR Automation</h4>
-                        <p>Pioneering automated solutions for streamlined HR processes</p>
-                    </div>
-                    <div class="skill-item">
-                        <i class="fas fa-chart-line"></i>
-                        <h4>Process Optimization</h4>
-                        <p>Improving efficiency and productivity in hiring workflows</p>
-                    </div>
-                    <div class="skill-item">
-                        <i class="fas fa-lightbulb"></i>
-                        <h4>Innovation Strategy</h4>
-                        <p>Developing cutting-edge approaches to HR challenges</p>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div class="profile-card">
+        <div class="profile-avatar">
+          <img src="../hr-services/assets/profile-photo.jpg" alt="Sheetal Paidimarri">
         </div>
-    </section>
+        <h3>Sheetal Paidimarri</h3>
+        <p>HR Innovation Leader</p>
+      </div>
+    </div>
+  </section>
 
-    <!-- Experience Section -->
-    <section id="experience" class="experience">
-        <div class="container">
-            <div class="section-header">
-                <h2>Professional Journey</h2>
-                <p>A timeline of growth, learning, and innovation in human resources</p>
-            </div>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-marker"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-date">2024 - Present</div>
-                        <h3>Founder - Skreenit</h3>
-                        <p>
-                            Developing revolutionary HR automation platform featuring one-way video interactions 
-                            for screening, reducing hiring time by 70% and increasing team productivity.
-                        </p>
-                        <div class="timeline-tags">
-                            <span class="tag">AI/ML</span>
-                            <span class="tag">Video Technology</span>
-                            <span class="tag">Automation</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-date">2024 - Present</div>
-                        <h3>Independent HR Consultant</h3>
-                        <p>
-                            Providing strategic HR consulting services to organizations, specializing in 
-                            talent acquisition optimization and process improvement initiatives.
-                        </p>
-                        <div class="timeline-tags">
-                            <span class="tag">Consulting</span>
-                            <span class="tag">Strategy</span>
-                            <span class="tag">Leadership</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-date">2011 - 2020</div>
-                        <h3>Manager Talent Acquisition Specialist</h3>
-                        <p>
-                            Built expertise in full-cycle recruiting, developed innovative sourcing strategies, 
-                            and led high-performing recruitment teams across various industries.
-                        </p>
-                        <div class="timeline-tags">
-                            <span class="tag">Recruiting</span>
-                            <span class="tag">Team Leadership</span>
-                            <span class="tag">Process Design</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <!-- STATS -->
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat"><span class="stat-num">17+</span><span class="stat-label">Years Experience</span></div>
+      <div class="stat"><span class="stat-num">70%</span><span class="stat-label">Faster Hiring</span></div>
+      <div class="stat"><span class="stat-num">40%</span><span class="stat-label">Lower Cost-per-Hire</span></div>
+      <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Innovation Focus</span></div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about section" id="about">
+    <div class="container about-grid">
+      <div class="about-image">
+        <img src="../hr-services/assets/profile-photo.jpg" alt="Sheetal Paidimarri">
+      </div>
+      <div class="about-copy">
+        <p class="eyebrow eyebrow-dark">About Me</p>
+        <h2 class="section-title">17 Years of HR Excellence, Reimagined</h2>
+        <p>As an independent HR consultant, I bring nearly two decades of experience in talent acquisition and human resources management &mdash; understanding the evolving needs of modern organizations and building solutions that bridge the gap between talent and opportunity.</p>
+        <p>I'm currently developing Skreenit, a groundbreaking HR automation platform that promises to reduce hiring timeframes by 70% while significantly boosting hiring team productivity.</p>
+        <ul class="check-list">
+          <li>Talent acquisition across industries, not just roles filled</li>
+          <li>Hands-on HR automation and process optimization</li>
+          <li>Innovation strategy grounded in real hiring pain points</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT I DO -->
+  <section class="services section" id="what-i-do">
+    <div class="container">
+      <p class="eyebrow eyebrow-dark">What I Do</p>
+      <h2 class="section-title">Where HR Expertise Meets Technology</h2>
+      <p class="section-sub">Two decades of hands-on HR work, channeled into automation and strategy that make hiring teams faster and more effective.</p>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon icon-navy">👥</div>
+          <h3>Talent Acquisition</h3>
+          <p>Expert in identifying and attracting top talent across industries, end to end.</p>
         </div>
-    </section>
-
-    <!-- Projects Section -->
-    <section id="projects" class="projects">
-        <div class="container">
-            <div class="section-header">
-                <h2>Featured Project</h2>
-                <p>Revolutionizing the hiring process with innovative technology</p>
-            </div>
-            <div class="project-showcase">
-                <div class="project-card featured">
-                    <div class="project-header">
-                        <div class="project-icon">
-                            <i class="fas fa-video"></i>
-                        </div>
-                        <div class="project-title">
-                            <h3>Skreenit</h3>
-                            <p>HR Automation Platform</p>
-                        </div>
-                        <div class="project-logo">
-                            <img src="logobrand.png" alt="Skreenit Logo" class="project-logo-img">
-                        </div>
-                    </div>
-                    <div class="project-content">
-                        <h4>Transforming Hiring Through AI-Powered Video Screening</h4>
-                        <p>
-                            Skreenit is a cutting-edge HR automation platform that revolutionizes the screening process 
-                            through one-way video interactions. This innovative solution addresses the time-intensive 
-                            nature of traditional hiring processes while maintaining quality and personal connection.
-                        </p>
-                        <div class="project-features">
-                            <div class="feature">
-                                <i class="fas fa-clock"></i>
-                                <div>
-                                    <h5>70% Time Reduction</h5>
-                                    <p>Dramatically reduces hiring timeframes</p>
-                                </div>
-                            </div>
-                            <div class="feature">
-                                <i class="fas fa-chart-bar"></i>
-                                <div>
-                                    <h5>Increased Productivity</h5>
-                                    <p>Boosts hiring team efficiency</p>
-                                </div>
-                            </div>
-                            <div class="feature">
-                                <i class="fas fa-play-circle"></i>
-                                <div>
-                                    <h5>Video Screening</h5>
-                                    <p>One-way video interaction technology</p>
-                                </div>
-                            </div>
-                            <div class="feature">
-                                <i class="fas fa-robot"></i>
-                                <div>
-                                    <h5>AI-Powered</h5>
-                                    <p>Intelligent automation and insights</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="project-stats">
-                            <div class="stat">
-                                <h4>70%</h4>
-                                <p>Time Saved</p>
-                            </div>
-                            <div class="stat">
-                                <h4>17+</h4>
-                                <p>Years Experience</p>
-                            </div>
-                            <div class="stat">
-                                <h4>100%</h4>
-                                <p>Innovation Focus</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="card">
+          <div class="card-icon icon-green">⚙️</div>
+          <h3>HR Automation</h3>
+          <p>Pioneering automated solutions &mdash; like Skreenit &mdash; for streamlined HR processes.</p>
         </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section id="testimonials" class="testimonials">
-        <div class="testimonials-wrapper">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Client Testimonials</h2>
-                    <p>What clients and colleagues say about working with me</p>
-                </div>
-            </div>
-            
-            <div class="testimonials-container">
-                <div class="testimonials-track">
-                    <!-- Slide 1 -->
-                    <div class="testimonials-grid">
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "Sheetal's expertise in HR automation transformed our hiring process. His innovative approach with AI-powered solutions reduced our hiring time by 70% and significantly improved candidate quality."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Ankit Shukla</h4>
-                                        <p>Service Delivery Head, Taurus BPO</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "Working with Sheetal on our talent acquisition strategy was game-changing. His deep understanding of HR processes and innovative solutions helped us build high-performing teams quickly."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Shashank Prasad</h4>
-                                        <p>South HR Head, Intelenet Global Services</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide 2 -->
-                    <div class="testimonials-grid">
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "The Skreenit platform that Sheetal Developing is revolutionary. The one-way video screening feature will save us countless hours while helping us find better candidates faster than ever before."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Ravi Banda</h4>
-                                        <p>Chairman, Square BPO Services</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "Sheetal's strategic approach to HR consulting helped us streamline our entire recruitment workflow. His insights into process optimization and automation were invaluable."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Praveen Rao</h4>
-                                        <p>Sr Director, Teleperformance, India</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide 3 -->
-                    <div class="testimonials-grid">
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "As a startup founder, I needed expert HR guidance. Sheetal provided practical solutions that scaled with our growth. His expertise in both traditional and modern HR practices is unmatched."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Raghavender M</h4>
-                                        <p>Head of India GCC, OSF Digital</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="testimonial-card">
-                            <div class="testimonial-content">
-                                <div class="quote-icon">
-                                    <i class="fas fa-quote-left"></i>
-                                </div>
-                                <p class="testimonial-text">
-                                    "Sheetal's innovative approach to HR automation helped us reduce our cost-per-hire by 40% while improving candidate experience. His solutions are both effective and user-friendly."
-                                </p>
-                                <div class="testimonial-author">
-                                    <div class="author-info">
-                                        <h4>Sandeep Kumar</h4>
-                                        <p>Talent Acquisition Lead, Enterprise Corp</p>
-                                    </div>
-                                    <div class="author-rating">
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Carousel Controls -->
-            <div class="testimonial-controls">
-                <button class="testimonial-btn" id="prevBtn" aria-label="Previous testimonials">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="testimonial-indicators">
-                    <div class="indicator active" data-slide="0"></div>
-                    <div class="indicator" data-slide="1"></div>
-                    <div class="indicator" data-slide="2"></div>
-                </div>
-                <button class="testimonial-btn" id="nextBtn" aria-label="Next testimonials">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
+        <div class="card">
+          <div class="card-icon icon-gold">📈</div>
+          <h3>Process Optimization</h3>
+          <p>Improving efficiency and productivity across hiring workflows.</p>
         </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="contact">
-        <div class="container">
-            <div class="section-header">
-                <h2>Let's Connect</h2>
-                <p>Ready to transform your hiring process? Let's discuss how we can work together.</p>
-            </div>
-            <div class="contact-content">
-                <div class="contact-info">
-                    <h3>Get In Touch</h3>
-                    <p>
-                        Whether you're looking for HR consulting services or interested in learning more about 
-                        Skreenit, I'd love to hear from you.
-                    </p>
-                    <div class="contact-methods">
-                        <div class="contact-method">
-                            <i class="fas fa-envelope"></i>
-                            <div>
-                                <h4>Email</h4>
-                                <p>sheetal@pskservices.co.in</p>
-                                <p>sheetal@skreenit.com</p>
-                            </div>
-                        </div>
-                        <div class="contact-method">
-                            <i class="fab fa-linkedin"></i>
-                            <div>
-                                <h4>LinkedIn</h4>
-                                <p>Connect with me professionally</p>
-                                <a href="https://www.linkedin.com/in/kiranpaidimarri"></a>
-                            </div>
-                        </div>
-                        <div class="contact-method">
-                            <i class="fas fa-calendar"></i>
-                            <div>
-                                <h4>Schedule a Call</h4>
-                                <p>Book a consultation session</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="contact-form">
-                    <form id="contactForm">
-                        <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" name="name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" name="email" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="subject">Subject</label>
-                            <select id="subject" name="subject" required>
-                                <option value="">Select a topic</option>
-                                <option value="consulting">HR Consulting</option>
-                                <option value="skreenit">Skreenit Platform</option>
-                                <option value="collaboration">Business Consulting</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea id="message" name="message" rows="5" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i>
-                            Send Message
-                        </button>
-                    </form>
-                </div>
-            </div>
+        <div class="card">
+          <div class="card-icon icon-navy">💡</div>
+          <h3>Innovation Strategy</h3>
+          <p>Developing cutting-edge approaches to modern HR challenges.</p>
         </div>
-    </section>
+      </div>
+    </div>
+  </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Sheetal Paidimarri</h3>
-                    <p>Independent HR, Business Consultant & Innovation Leader</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Services</h4>
-                    <ul>
-                        <li>HR Consulting</li>
-                        <li>Talent Acquisition</li>
-                        <li>Process Optimization</li>
-                        <li>HR Automation</li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Connect</h4>
-                    <div class="social-links">
-                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" class="social-link"><i class="fas fa-envelope"></i></a>
-                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Skreenit. A Product of BMG Enterprises. All rights reserved.</p>
-            </div>
+  <!-- EXPERIENCE -->
+  <section class="approach section" id="experience">
+    <div class="approach-bg" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80');"></div>
+    <div class="approach-overlay"></div>
+    <div class="container">
+      <p class="eyebrow">Professional Journey</p>
+      <h2 class="section-title section-title-light">A Timeline of Growth &amp; Innovation</h2>
+      <div class="approach-steps">
+        <div class="step">
+          <span class="step-num">2024 &mdash; Present</span>
+          <h3>Founder, Skreenit</h3>
+          <p>Developing a revolutionary HR automation platform featuring one-way video interactions for screening, reducing hiring time by 70% and increasing team productivity.</p>
+          <div class="step-tags">
+            <span class="tag">AI/ML</span>
+            <span class="tag">Video Technology</span>
+            <span class="tag">Automation</span>
+          </div>
         </div>
-    </footer>
+        <div class="step">
+          <span class="step-num">2024 &mdash; Present</span>
+          <h3>Independent HR Consultant</h3>
+          <p>Providing strategic HR consulting services to organizations, specializing in talent acquisition optimization and process improvement initiatives.</p>
+          <div class="step-tags">
+            <span class="tag">Consulting</span>
+            <span class="tag">Strategy</span>
+            <span class="tag">Leadership</span>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">2011 &mdash; 2020</span>
+          <h3>Manager, Talent Acquisition</h3>
+          <p>Built expertise in full-cycle recruiting, developed innovative sourcing strategies, and led high-performing recruitment teams across various industries.</p>
+          <div class="step-tags">
+            <span class="tag">Recruiting</span>
+            <span class="tag">Team Leadership</span>
+            <span class="tag">Process Design</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <script src="script.js"></script>
+  <!-- PROJECTS -->
+  <section class="section" id="projects">
+    <div class="container">
+      <p class="eyebrow eyebrow-dark">Featured Project</p>
+      <h2 class="section-title">Revolutionizing Hiring With Innovative Technology</h2>
+
+      <div class="project-card">
+        <div class="project-header">
+          <div class="project-icon">🎥</div>
+          <div class="project-title">
+            <h3>Skreenit</h3>
+            <p>HR Automation Platform</p>
+          </div>
+          <img src="logobrand.png" alt="Skreenit logo" class="project-logo-img">
+        </div>
+        <div class="project-content">
+          <h4>Transforming Hiring Through AI-Powered Video Screening</h4>
+          <p>Skreenit is a cutting-edge HR automation platform that revolutionizes the screening process through one-way video interactions. This innovative solution addresses the time-intensive nature of traditional hiring processes while maintaining quality and personal connection.</p>
+          <div class="project-features">
+            <div class="feature">
+              <span class="feature-icon">⏱️</span>
+              <div>
+                <h5>70% Time Reduction</h5>
+                <p>Dramatically reduces hiring timeframes</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-icon">📊</span>
+              <div>
+                <h5>Increased Productivity</h5>
+                <p>Boosts hiring team efficiency</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-icon">▶️</span>
+              <div>
+                <h5>Video Screening</h5>
+                <p>One-way video interaction technology</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-icon">🤖</span>
+              <div>
+                <h5>AI-Powered</h5>
+                <p>Intelligent automation and insights</p>
+              </div>
+            </div>
+          </div>
+          <div class="project-stats">
+            <div class="stat"><h4>70%</h4><p>Time Saved</p></div>
+            <div class="stat"><h4>17+</h4><p>Years Experience</p></div>
+            <div class="stat"><h4>100%</h4><p>Innovation Focus</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials section" id="testimonials">
+    <div class="container">
+      <p class="eyebrow eyebrow-dark">Client Testimonials</p>
+      <h2 class="section-title">What Clients &amp; Colleagues Say</h2>
+    </div>
+
+    <div class="container testimonials-container">
+      <div class="testimonials-track">
+        <!-- Slide 1 -->
+        <div class="testimonials-grid">
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">Sheetal's expertise in HR automation transformed our hiring process. His innovative approach with AI-powered solutions reduced our hiring time by 70% and significantly improved candidate quality.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Ankit Shukla</h4>
+                <p>Service Delivery Head, Taurus BPO</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">Working with Sheetal on our talent acquisition strategy was game-changing. His deep understanding of HR processes and innovative solutions helped us build high-performing teams quickly.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Shashank Prasad</h4>
+                <p>South HR Head, Intelenet Global Services</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="testimonials-grid">
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">The Skreenit platform that Sheetal is developing is revolutionary. The one-way video screening feature will save us countless hours while helping us find better candidates faster than ever before.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Ravi Banda</h4>
+                <p>Chairman, Square BPO Services</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">Sheetal's strategic approach to HR consulting helped us streamline our entire recruitment workflow. His insights into process optimization and automation were invaluable.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Praveen Rao</h4>
+                <p>Sr Director, Teleperformance, India</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="testimonials-grid">
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">As a startup founder, I needed expert HR guidance. Sheetal provided practical solutions that scaled with our growth. His expertise in both traditional and modern HR practices is unmatched.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Raghavender M</h4>
+                <p>Head of India GCC, OSF Digital</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="quote-icon">&ldquo;</div>
+            <p class="testimonial-text">Sheetal's innovative approach to HR automation helped us reduce our cost-per-hire by 40% while improving candidate experience. His solutions are both effective and user-friendly.</p>
+            <div class="testimonial-author">
+              <div class="author-info">
+                <h4>Sandeep Kumar</h4>
+                <p>Talent Acquisition Lead, Enterprise Corp</p>
+              </div>
+              <div class="author-rating">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-controls">
+        <button class="testimonial-btn" id="prevBtn" aria-label="Previous testimonials">&larr;</button>
+        <div class="testimonial-indicators">
+          <div class="indicator active" data-slide="0"></div>
+          <div class="indicator" data-slide="1"></div>
+          <div class="indicator" data-slide="2"></div>
+        </div>
+        <button class="testimonial-btn" id="nextBtn" aria-label="Next testimonials">&rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="contact section" id="contact">
+    <div class="container contact-grid">
+      <div class="contact-info">
+        <p class="eyebrow eyebrow-dark">Let's Connect</p>
+        <h2 class="section-title">Ready to Transform Your Hiring Process?</h2>
+        <p class="section-sub">Whether you're looking for HR consulting services or interested in learning more about Skreenit, I'd love to hear from you.</p>
+
+        <ul class="contact-list">
+          <li><span class="contact-label">Email</span><a href="mailto:sheetal@pskservices.co.in">sheetal@pskservices.co.in</a></li>
+          <li><span class="contact-label">Email (Skreenit)</span><a href="mailto:sheetal@skreenit.com">sheetal@skreenit.com</a></li>
+          <li><span class="contact-label">LinkedIn</span><a href="https://www.linkedin.com/in/kiranpaidimarri" target="_blank" rel="noopener">linkedin.com/in/kiranpaidimarri</a></li>
+        </ul>
+      </div>
+
+      <form class="contact-form" id="contactForm">
+        <label>Name<input type="text" name="name" required></label>
+        <label>Email<input type="email" name="email" required></label>
+        <label>Subject
+          <select name="subject" required>
+            <option value="">Select a topic</option>
+            <option value="HR Consulting">HR Consulting</option>
+            <option value="Skreenit Platform">Skreenit Platform</option>
+            <option value="Business Consulting">Business Consulting</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label>Message<textarea name="message" rows="4" required></textarea></label>
+        <button type="submit" class="btn btn-gold">Send Message</button>
+        <p class="form-note" id="formNote"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="brand">
+      <img src="../hr-services/assets/profile-photo.jpg" alt="Sheetal Paidimarri" class="brand-mark">
+      <span class="brand-text">Sheetal <strong>Paidimarri</strong></span>
+    </div>
+    <p>&copy; <span id="year"></span> Sheetal Paidimarri. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="#about">About</a>
+      <a href="#experience">Experience</a>
+      <a href="#projects">Projects</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>
