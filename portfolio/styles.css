@@ -341,7 +341,8 @@ ul { list-style: none; }
 .project-title h3 { color: var(--navy); font-size: 1.4rem; }
 .project-title p { color: var(--muted); font-size: 0.9rem; }
 .project-logo {
-  background: var(--navy-dark);
+  /* logobanner.webp has an opaque pure-black background baked in; match it so no box shows */
+  background: #000;
   border-radius: 10px;
   padding: 14px 20px;
   margin-left: auto;
