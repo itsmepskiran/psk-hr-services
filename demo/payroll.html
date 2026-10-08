@@ -75,6 +75,7 @@ input.ded{width:100px;text-align:right}
     <button data-t="shifts">Shifts</button>
     <button data-t="settings">Settings & Backup</button>
   </nav>
+  <button class="b s sm" id="logoutBtn" style="margin-left:auto">Log out</button>
 </header>
 <main>
 <div id="backupWarn" class="warnbox hidden"></div>
@@ -135,6 +136,9 @@ input.ded{width:100px;text-align:right}
   <div class="card">
     <div class="row"><h2 style="margin:0">Employees</h2><span class="sp"></span>
       <label class="hint"><input type="checkbox" id="eShowIn"> Show inactive</label>
+      <button class="b s" id="eTpl">Download template</button>
+      <button class="b s" id="eImp">Upload Excel</button>
+      <input type="file" id="eFile" accept=".xlsx,.xls,.csv" class="hidden">
       <button class="b" id="eAdd">+ Add employee</button></div>
   </div>
   <div class="card"><div class="tw"><table id="eTbl"></table></div></div>
@@ -549,6 +553,80 @@ function renderEmps(){
 $('eShowIn').onchange=renderEmps;
 $('eAdd').onclick=()=>empForm(null);
 $('eTbl').onclick=e=>{ const b=e.target.closest('[data-edit]'); if(b) empForm(DB.employees.find(x=>x.id===b.dataset.edit)); };
+
+/* ---------- logout ---------- */
+$('logoutBtn').onclick=()=>{
+  if(typeof DIRTY!=='undefined'&&DIRTY&&!confirm('You have unsaved attendance changes. Log out anyway?')) return;
+  SAVING.then(()=>fetch(API+'/api/logout',{method:'POST',credentials:'include'})).catch(()=>{}).then(toLogin);
+};
+
+/* ---------- bulk employee import from Excel ---------- */
+const IMP_COLS=['Crew ID','Name','Role','Monthly Salary','Shift','Weekly Off','Date of Joining','Status'];
+$('eTpl').onclick=()=>{
+  if(!window.XLSX){ alert('Excel needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
+  const sh=DB.shifts[0]?DB.shifts[0].name:'';
+  const ws=XLSX.utils.aoa_to_sheet([IMP_COLS,['EMP-01','Sample Name','Welder',25000,sh,'Sunday','2024-04-01','Active']]);
+  ws['!cols']=IMP_COLS.map(c=>({wch:Math.max(14,c.length+2)}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Employees');
+  XLSX.writeFile(wb,'Employee_Import_Template.xlsx');
+};
+$('eImp').onclick=()=>$('eFile').click();
+function impDate(v){
+  if(v===''||v==null) return '';
+  if(typeof v==='number'){ const d=XLSX.SSF.parse_date_code(v); return d?ymd(d.y,d.m,d.d):null; }
+  const t=String(v).trim(); let m;
+  if(m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)) return ymd(+m[1],+m[2],+m[3]);
+  if(m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)) return ymd(+m[3],+m[2],+m[1]);
+  const d=new Date(t); return isNaN(d)?null:ymd(d.getFullYear(),d.getMonth()+1,d.getDate());
+}
+$('eFile').onchange=e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(!window.XLSX){ alert('Excel needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows;
+    try{ const wb=XLSX.read(r.result,{type:'array'}); rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
+    catch(err){ alert('Could not read that file: '+err.message); return; }
+    const norm=x=>String(x).toLowerCase().replace(/[^a-z]/g,'');
+    const aliases={crewid:'id',id:'id',employeeid:'id',empid:'id',name:'name',employeename:'name',role:'role',designation:'role',monthlysalary:'salary',salary:'salary',shift:'shift',defaultshift:'shift',weeklyoff:'wo',weekoff:'wo',dateofjoining:'doj',doj:'doj',joiningdate:'doj',status:'status'};
+    const hi=rows.findIndex(rw=>rw.some(c=>aliases[norm(c)]==='id'));
+    if(hi<0){ alert('No "Crew ID" column found. Download the template and use its column headings.'); return; }
+    const col={}; rows[hi].forEach((c,i)=>{ const k=aliases[norm(c)]; if(k&&!(k in col)) col[k]=i; });
+    const g=(rw,k)=>k in col?rw[col[k]]:'';
+    const shiftBy=Object.fromEntries(DB.shifts.map(s=>[s.name.toLowerCase(),s.id]));
+    const days=DOW.map(d=>d.toLowerCase());
+    const good=[], bad=[], seen=new Set();
+    rows.slice(hi+1).forEach((rw,i)=>{
+      if(rw.every(c=>c==='')) return;
+      const line=hi+i+2, id=String(g(rw,'id')).trim(), name=String(g(rw,'name')).trim(), sal=+String(g(rw,'salary')).replace(/,/g,'');
+      const err=[];
+      if(!id) err.push('Crew ID missing'); else if(seen.has(id.toLowerCase())) err.push('duplicate Crew ID in file'); else seen.add(id.toLowerCase());
+      if(!name) err.push('Name missing');
+      if(!(sal>0)) err.push('Salary must be a number above 0');
+      const doj=impDate(g(rw,'doj')); if(doj===null) err.push('Date of Joining not understood');
+      const shTxt=String(g(rw,'shift')).trim().toLowerCase();
+      if(shTxt&&!shiftBy[shTxt]) err.push('Shift "'+g(rw,'shift')+'" not found');
+      const woTxt=String(g(rw,'wo')).trim().toLowerCase();
+      let wo=''; if(woTxt&&woTxt!=='none'){ const k=days.findIndex(d=>d===woTxt||d.slice(0,3)===woTxt.slice(0,3)); if(k<0) err.push('Weekly Off "'+g(rw,'wo')+'" not understood'); else wo=k; }
+      const stTxt=String(g(rw,'status')).trim().toLowerCase();
+      if(stTxt&&stTxt!=='active'&&stTxt!=='inactive') err.push('Status must be Active or Inactive');
+      if(err.length){ bad.push(`Row ${line}: ${err.join('; ')}`); return; }
+      good.push({id,name,role:String(g(rw,'role')).trim(),salary:sal,shift:shiftBy[shTxt]||DB.shifts[0]?.id,weekOff:wo,doj,status:stTxt==='inactive'?'Inactive':'Active'});
+    });
+    const have=new Set(DB.employees.map(x=>x.id.toLowerCase()));
+    const upd=good.filter(x=>have.has(x.id.toLowerCase())).length, add=good.length-upd;
+    $('modalBody').innerHTML=`<h2>Import employees</h2>
+      <p><b>${add}</b> new, <b>${upd}</b> existing will be updated, <b>${bad.length}</b> rows skipped.</p>
+      ${bad.length?`<div class="warnbox" style="max-height:180px;overflow:auto">${bad.slice(0,50).map(esc).join('<br>')}${bad.length>50?'<br>…':''}</div>`:''}
+      <div class="row" style="margin-top:14px"><span class="sp"></span><button class="b s" id="iCancel">Cancel</button>${good.length?'<button class="b" id="iGo">Import '+good.length+'</button>':''}</div>`;
+    $('modal').classList.remove('hidden'); $('iCancel').onclick=closeModal;
+    if(good.length) $('iGo').onclick=()=>{
+      for(const rec of good){ const ex=DB.employees.find(x=>x.id.toLowerCase()===rec.id.toLowerCase()); if(ex) Object.assign(ex,rec,{id:ex.id}); else DB.employees.push(rec); }
+      save(); closeModal(); renderEmps(); if(CUR&&!DIRTY) openDay(CUR); toast(`Imported ${good.length} employees`);
+    };
+  };
+  r.readAsArrayBuffer(f);
+};
 function empForm(emp){
   const e=emp||{id:'',name:'',role:'',salary:'',shift:DB.shifts[0]?.id,weekOff:0,doj:'',status:'Active'};
   $('modalBody').innerHTML=`<h2>${emp?'Edit':'Add'} employee</h2><div class="grid2">
