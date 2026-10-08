@@ -30,14 +30,17 @@ button{width:100%;padding:11px;border:0;border-radius:8px;background:#1f5fbf;col
   <button type="submit">Sign in</button>
 </form>
 <script>
+var API=/pskservices\.co\.in$/.test(location.hostname)?'https://api.pskservices.co.in':'http://localhost:8787';
 document.getElementById('f').addEventListener('submit',function(e){
   e.preventDefault();
-  if(u.value==='admin'&&p.value==='admin'){
-    try{sessionStorage.setItem('psk_demo_auth','1');}catch(x){}
-    location.href='payroll.html';
-  }else{
-    document.getElementById('err').textContent='Invalid username or password.';
-  }
+  var err=document.getElementById('err'); err.textContent='';
+  fetch(API+'/api/login',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u.value,password:p.value})})
+  .then(function(r){
+    if(r.ok) location.href='payroll.html';
+    else err.textContent='Invalid username or password.';
+  })
+  .catch(function(){ err.textContent='Cannot reach the server. Try again.'; });
 });
 </script>
 </body>

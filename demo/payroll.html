@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script>if(sessionStorage.getItem("psk_demo_auth")!=="1")location.replace("./");</script>
 <title>Crew Attendance & Payroll</title>
 <script src="xlsx.full.min.js"></script>
 <script>if(!window.XLSX) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');</script>
@@ -294,15 +293,32 @@ const SEED_EMPS=[
 ].map(([id,name,role,salary,status,shift])=>({id,name,role,salary,status,shift,doj:'',weekOff:0}));
 const DEFAULT_SETTINGS={company:'',divisor:'month',otMult:1,otMin:0,woMult:2,phMult:2,paidWO:true,paidPH:true,paidCO:true};
 
-let DB;
-function load(){
-  try{ DB=JSON.parse(localStorage.getItem(KEY)); }catch(e){ DB=null; }
+let DB, REV=0, SAVING=Promise.resolve();
+const API=/pskservices\.co\.in$/.test(location.hostname)?'https://api.pskservices.co.in':'http://localhost:8787';
+function api(method,body){
+  return fetch(API+'/api/data',{method,credentials:'include',headers:{'Content-Type':'application/json'},body:body&&JSON.stringify(body)});
+}
+function toLogin(){ location.replace('./'); }
+async function load(){
+  let r;
+  try{ r=await api('GET'); }catch(e){ document.body.innerHTML='<p style="padding:30px">Cannot reach the server. Check your connection and refresh.</p>'; throw e; }
+  if(r.status===401){ toLogin(); throw new Error('login required'); }
+  const j=await r.json(); REV=j.rev; DB=j.data;
   if(!DB){ DB={version:1,employees:SEED_EMPS,shifts:SEED_SHIFTS,att:{},deductions:{},settings:{...DEFAULT_SETTINGS},lastBackup:null}; save(); }
   DB.settings={...DEFAULT_SETTINGS,...DB.settings};
 }
 function save(){
-  try{ localStorage.setItem(KEY,JSON.stringify(DB)); }
-  catch(e){ alert('Could not save — browser storage is blocked or full. Download a backup now.'); }
+  /* Saves are queued so they reach the server in order; REV guards against overwriting someone else's changes. */
+  SAVING=SAVING.then(async()=>{
+    try{
+      const r=await api('PUT',{rev:REV,data:DB});
+      if(r.status===401) return toLogin();
+      if(r.status===409){ alert('Someone else changed the data. The page will reload with their latest version; please redo your last change.'); return location.reload(); }
+      if(!r.ok) throw new Error(r.status);
+      REV=(await r.json()).rev;
+    }catch(e){ alert('Could not save to the server. Download a backup now.'); }
+  });
+  return SAVING;
 }
 
 /* ---------- helpers ---------- */
@@ -595,11 +611,11 @@ $('bkUp').onclick=()=>$('bkFile').click();
 $('bkFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.employees||!d.att||!d.shifts) throw new Error('Not a payroll backup file');
       if(!confirm(`Replace ALL current data with this backup?\n\n${d.employees.length} employees, ${Object.keys(d.att).length} days of attendance.`)) return;
-      DB=d; DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.deductions=DB.deductions||{}; save(); location.reload(); }
+      DB=d; DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.deductions=DB.deductions||{}; save().then(()=>location.reload()); }
     catch(err){ alert('Could not restore: '+err.message); } };
   r.readAsText(f); e.target.value=''; };
-$('bkReset').onclick=()=>{ if(prompt('This deletes all employees and attendance on this computer. Type ERASE to confirm.')!=='ERASE') return;
-  localStorage.removeItem(KEY); location.reload(); };
+$('bkReset').onclick=()=>{ if(prompt('This deletes all employees and attendance for everyone using the demo. Type ERASE to confirm.')!=='ERASE') return;
+  SAVING.then(()=>api('DELETE')).then(()=>location.reload()); };
 function checkBackup(){
   const days=Object.keys(DB.att).length, age=DB.lastBackup?(Date.now()-DB.lastBackup)/864e5:Infinity;
   const show=days>0 && age>7;
@@ -608,7 +624,7 @@ function checkBackup(){
 }
 
 /* ---------- start ---------- */
-load(); applyCo(); checkBackup(); openDay(localISO(new Date()));
+load().then(()=>{ applyCo(); checkBackup(); openDay(localISO(new Date())); });
 </script>
 </body>
 </html>

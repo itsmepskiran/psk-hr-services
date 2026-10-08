@@ -1,0 +1,14 @@
+name = "psk-demo-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Custom domain: Cloudflare creates the DNS record automatically.
+routes = [{ pattern = "api.pskservices.co.in", custom_domain = true }]
+
+# Create the namespace with:  npx wrangler kv namespace create DEMO_KV
+# then paste the printed id below.
+[[kv_namespaces]]
+binding = "DEMO_KV"
+id = "REPLACE_WITH_KV_ID"
+
+# Secrets (set with `npx wrangler secret put <NAME>`): ADMIN_USER, ADMIN_PASS, SESSION_SECRET
