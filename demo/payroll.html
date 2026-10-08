@@ -108,7 +108,8 @@ input.ded{width:100px;text-align:right}
 <!-- REGISTER -->
 <section id="t-register" class="hidden">
   <div class="card">
-    <div class="row"><input type="month" id="rMonth"><span class="hint">Click a date to open that day's attendance. Red dates are not submitted yet.</span></div>
+    <div class="row"><input type="month" id="rMonth"><span class="hint">Click a date to open that day's attendance. Red dates are not submitted yet.</span>
+      <span class="sp"></span><button class="b s" id="aImp">Import month from Excel</button><input type="file" id="aFile" accept=".xlsx,.xls" class="hidden"></div>
     <div class="legend" style="margin-top:10px"><span class="c-P">P Present</span><span class="c-HD">HD Half day</span><span class="c-A">A Absent</span><span class="c-WO">WO Week-off</span><span class="c-WW">WW Worked on week-off</span><span class="c-PH">PH Holiday</span><span class="c-PW">PW Worked on holiday</span><span class="c-CO">CO Comp-off</span></div>
   </div>
   <div class="card"><div class="tw"><table class="reg" id="rTbl"></table></div></div>
@@ -623,6 +624,99 @@ $('eFile').onchange=e=>{
     if(good.length) $('iGo').onclick=()=>{
       for(const rec of good){ const ex=DB.employees.find(x=>x.id.toLowerCase()===rec.id.toLowerCase()); if(ex) Object.assign(ex,rec,{id:ex.id}); else DB.employees.push(rec); }
       save(); closeModal(); renderEmps(); if(CUR&&!DIRTY) openDay(CUR); toast(`Imported ${good.length} employees`);
+    };
+  };
+  r.readAsArrayBuffer(f);
+};
+
+/* ---------- bulk monthly attendance import from Excel ----------
+   Layout: one row per employee; header row has Crew ID + one date per day (In column, Out column to its right);
+   cells hold times ("9am", "6:30pm") or a status word (Absent, Week-off, PH, C-off). */
+function impTime(v){
+  if(v===''||v==null) return '';
+  if(typeof v==='number'){ const m=Math.round((v%1)*1440); return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+  const m=String(v).trim().toLowerCase().replace(/\s+/g,'').match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+  if(!m) return null;
+  let h=+m[1], mi=+(m[2]||0); if(h>24||mi>59) return null;
+  if(m[3]==='pm'&&h<12) h+=12; if(m[3]==='am'&&h===12) h=0;
+  return String(h%24).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+}
+const IMP_STATUS={absent:'A',a:'A',leave:'A',weekoff:'WO',wo:'WO',off:'WO',ph:'PH',holiday:'PH',publicholiday:'PH',coff:'CO',compoff:'CO',co:'CO',hd:'HD',halfday:'HD',present:'P',p:'P'};
+function nearestShift(inT,outT){
+  const dist=(a,b)=>{ const d=Math.abs(toMin(a)-toMin(b)); return Math.min(d,1440-d); };
+  let best=null,bs=1e9;
+  for(const sh of DB.shifts){ const sc=dist(inT,sh.start)*1000+(outT?dist(outT,sh.end):0); if(sc<bs){bs=sc;best=sh;} }
+  return best?best.id:DB.shifts[0]?.id;
+}
+$('aImp').onclick=()=>$('aFile').click();
+$('aFile').onchange=e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(!window.XLSX){ alert('Excel needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows;
+    try{ const wb=XLSX.read(r.result,{type:'array'}); rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
+    catch(err){ alert('Could not read that file: '+err.message); return; }
+    const norm=x=>String(x).toLowerCase().replace(/[^a-z]/g,'');
+    const hi=rows.findIndex(rw=>rw.some(c=>['crewid','employeeid','empid'].includes(norm(c))));
+    if(hi<0){ alert('No "Crew ID" heading found in the sheet.'); return; }
+    const idCol=rows[hi].findIndex(c=>['crewid','employeeid','empid'].includes(norm(c)));
+    /* date columns: header cells that are real dates; the Out column sits right after the In column */
+    const dateCols=[];
+    rows[hi].forEach((c,i)=>{
+      let d=null;
+      if(typeof c==='number'&&c>40000){ const p=XLSX.SSF.parse_date_code(c); if(p) d=ymd(p.y,p.m,p.d); }
+      else if(typeof c==='string'&&c.trim()) d=impDate(c.trim());
+      if(d) dateCols.push({col:i,date:d});
+    });
+    if(!dateCols.length){ alert('No date columns found in the heading row.'); return; }
+    const months=[...new Set(dateCols.map(x=>x.date.slice(0,7)))];
+    const emap=Object.fromEntries(DB.employees.map(x=>[x.id.toLowerCase(),x]));
+    const warns=[], unknown=[], recs=[], blanks={};
+    const counts={P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0};
+    const dataRows=rows.slice(hi+1).filter(rw=>String(rw[idCol]).trim() && !/^(in|out)$/i.test(String(rw[idCol]).trim()));
+    /* dates on which the sheet marks a public holiday (so people who worked that day become "worked on holiday") */
+    const phDates=new Set();
+    for(const rw of dataRows) for(const dc of dateCols) if(IMP_STATUS[norm(rw[dc.col])]==='PH') phDates.add(dc.date);
+    for(const rw of dataRows){
+      const id=String(rw[idCol]).trim(), emp=emap[id.toLowerCase()];
+      if(!emp){ unknown.push(id); continue; }
+      for(const dc of dateCols){
+        const iv=rw[dc.col], ov=rw[dc.col+1], ivs=String(iv).trim(), ovs=String(ov).trim();
+        if(!ivs&&!ovs){ (blanks[emp.id]=blanks[emp.id]||[]).push(+dc.date.slice(8)); continue; }
+        const where=`${emp.id} ${prettyDate(dc.date)}`;
+        const st=IMP_STATUS[norm(ivs)]||IMP_STATUS[norm(ovs)];
+        let rec;
+        if(st&&!['P'].includes(st)&&!(st==='HD'&&impTime(iv))){ rec={status:st,shift:emp.shift||DB.shifts[0]?.id,in:'',out:''}; }
+        else {
+          const ti=impTime(iv), to=impTime(ov);
+          if(ti===null||to===null){ warns.push(`${where}: could not read "${ivs}${ovs?' / '+ovs:''}" — skipped`); continue; }
+          if(!ti&&!to){ warns.push(`${where}: "${ivs||ovs}" not understood — skipped`); continue; }
+          if(!ti||!to) warns.push(`${where}: ${ti?'Out':'In'} time missing — imported, fix it in Daily Attendance`);
+          const status= st==='HD'?'HD' : phDates.has(dc.date)?'PW':'P';
+          rec={status,shift:nearestShift(ti||to,to),in:ti,out:to};
+        }
+        counts[rec.status]++; recs.push({date:dc.date,id:emp.id,rec});
+      }
+    }
+    if(!recs.length){ alert('No attendance could be read from this file.'); return; }
+    const overwrite=recs.filter(x=>DB.att[x.date]?.rows?.[x.id]).length;
+    const empCount=new Set(recs.map(x=>x.id)).size;
+    const blankLines=Object.entries(blanks).filter(([id,d])=>d.length).map(([id,d])=>`${id}: ${d.length} blank day${d.length>1?'s':''} (${d.length>6?d.slice(0,6).join(', ')+'…':d.join(', ')})`);
+    const lab=Object.entries(counts).filter(([k,v])=>v).map(([k,v])=>`${v} ${ST[k].label.toLowerCase()}`).join(', ');
+    const list=(t,a,c)=>a.length?`<p style="margin:10px 0 4px"><b>${t}</b></p><div class="warnbox" style="max-height:130px;overflow:auto;${c||''}">${a.slice(0,40).map(esc).join('<br>')}${a.length>40?'<br>…':''}</div>`:'';
+    $('modalBody').innerHTML=`<h2>Import attendance — ${months.map(m=>new Date(m+'-01T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'})).join(', ')}</h2>
+      <p><b>${recs.length}</b> day records for <b>${empCount}</b> employees: ${esc(lab)}.</p>
+      ${overwrite?`<p style="color:var(--warn)">${overwrite} of these replace attendance already saved in the app.</p>`:''}
+      ${list('Crew IDs not in the Employees list (skipped — add them first)',[...new Set(unknown)])}
+      ${list('Please check',warns)}
+      ${list('Blank days (left as "not marked" — add a Date of Joining for new joiners, or mark them in Daily Attendance)',blankLines)}
+      <p class="hint" style="margin-top:10px">Shifts are matched to each person's In time. Imported days are marked as submitted.</p>
+      <div class="row" style="margin-top:14px"><span class="sp"></span><button class="b s" id="aCancel">Cancel</button><button class="b" id="aGo">Import ${recs.length} records</button></div>`;
+    $('modal').classList.remove('hidden'); $('aCancel').onclick=closeModal;
+    $('aGo').onclick=()=>{
+      for(const x of recs){ const a=DB.att[x.date]=DB.att[x.date]||{submitted:0,rows:{}}; a.rows[x.id]=x.rec; a.submitted=a.submitted||Date.now(); }
+      save(); closeModal(); DIRTY=false; if(CUR) openDay(CUR); renderRegister(); toast(`Imported ${recs.length} attendance records`);
     };
   };
   r.readAsArrayBuffer(f);
