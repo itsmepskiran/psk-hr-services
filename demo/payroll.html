@@ -162,6 +162,7 @@ input.ded{width:100px;text-align:right}
       <label class="f">Company name (for payslips)<input id="stCo"></label>
       <label class="f">Per-day rate = Salary ÷
         <select id="stDiv"><option value="month">Days in the month (28–31)</option><option value="30">30</option><option value="26">26</option></select></label>
+      <p class="hint" style="grid-column:1/-1">Overtime counts only time after the shift end. Time before the shift start counts only on days where "Early OT ok" is ticked in Daily Attendance. Week-off work is paid at the week-off rate only if the person has no Absent in the 7 days before; otherwise it is paid as a normal day.</p>
       <label class="f">OT rate (× hourly)<input id="stOt" type="number" step="0.25" min="0"></label>
       <label class="f">Ignore OT below (minutes per day)<input id="stOtMin" type="number" step="5" min="0"></label>
       <label class="f">Week-off work rate (× hourly)<input id="stWo" type="number" step="0.25" min="0"></label>
@@ -221,7 +222,7 @@ function dayCalc(rec, sh, set){
   r.worked=O-L;
   if(r.worked>16*60) r.err='Over 16 hrs — check times';
   if(rec.status==='P'){
-    let ot=Math.max(0,S-L)+Math.max(0,O-E);
+    let ot=(rec.eot?Math.max(0,S-L):0)+Math.max(0,O-E);   // time before shift start counts only if Early OT is approved for that day
     if(ot<(set.otMin||0)) ot=0;
     r.ot=ot;
     r.short=Math.max(0,L-S)+Math.max(0,E-O);
@@ -241,7 +242,7 @@ function monthPayroll(db, ym){
   const out=[];
   for(const e of db.employees){
     const o={emp:e, P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0, notMarked:0, notJoined:0,
-             worked:0, ot:0, short:0, woMin:0, phMin:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
+             worked:0, ot:0, short:0, woMin:0, phMin:0, wwCancel:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
     o.perDay = (+e.salary||0)/divisor;
     for(let d=1; d<=nDays; d++){
       const date=ymd(Y,M,d), rec=db.att[date]?.rows?.[e.id];
@@ -249,15 +250,19 @@ function monthPayroll(db, ym){
       if(e.doj && date<e.doj){ o.notJoined++; o.days.push({date,code:'NJ'}); continue; }
       if(!rec || !submitted){ if(date<=today) o.notMarked++; o.days.push({date,code:'NM'}); continue; }
       o.anyRec=true;
-      o[rec.status]++;
-      const sh=shiftById[rec.shift]; const c=dayCalc(rec,sh,set);
+      const sh=shiftById[rec.shift];
+      /* Worked on week-off is paid double only if the person had no Absent in the 7 days before; otherwise it is a normal working day. */
+      let ev=rec, cancelled=false;
+      if(rec.status==='WW' && absentInPrevWeek(db,e.id,date)){ ev={...rec,status:'P'}; cancelled=true; o.wwCancel++; }
+      o[ev.status]++;
+      const c=dayCalc(ev,sh,set);
       const hourly = sh? o.perDay/(shiftLen(sh)/60) : 0;
       o.worked+=c.worked; o.ot+=c.ot; o.short+=c.short;
       o.otPay += hourly*(c.ot/60)*set.otMult;
-      if(rec.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
+      if(ev.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
       if(rec.status==='PW'){ o.phMin+=c.worked; o.phPay+=hourly*(c.worked/60)*set.phMult; }
       if(c.err) o.errs.push(date.slice(8)+': '+c.err);
-      o.days.push({date,code:rec.status,rec,calc:c});
+      o.days.push({date,code:ev.status,rec,calc:c,wwCancelled:cancelled});
     }
     o.paidDays = o.P + 0.5*o.HD + (set.paidWO?o.WO:0) + (set.paidPH?o.PH:0) + (set.paidCO?o.CO:0);
     o.base = o.perDay*o.paidDays;
@@ -267,6 +272,12 @@ function monthPayroll(db, ym){
     if(e.status==='Active' || o.anyRec) out.push(o);
   }
   return {rows:out, divisor, nDays};
+}
+function absentInPrevWeek(db,empId,date){
+  const [y,m,d]=date.split('-').map(Number);
+  for(let k=1;k<=7;k++){ const ds=localISO(new Date(y,m-1,d-k)), a=db.att[ds];
+    if(a?.submitted && a.rows?.[empId]?.status==='A') return true; }
+  return false;
 }
 function localISO(d){ return ymd(d.getFullYear(),d.getMonth()+1,d.getDate()); }
 /* =====================  END ENGINE  ===================== */
@@ -383,8 +394,8 @@ function renderDaily(){
   const emps=empsForDate(CUR);
   const shiftOpts=id=>DB.shifts.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${esc(shiftLabel(s))}</option>`).join('');
   const stOpts=k=>STATUSES.map(s=>`<option value="${s.k}" ${s.k===k?'selected':''}>${s.label}</option>`).join('');
-  let h=`<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th>Assigned Shift</th><th>Status</th><th>In</th><th>Out</th><th class="n">Hours</th><th class="n">OT</th><th>Check</th></tr></thead><tbody>`;
-  if(!emps.length) h+=`<tr><td colspan="10" class="hint">No active employees for this date. Add them in the Employees tab.</td></tr>`;
+  let h=`<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th>Assigned Shift</th><th>Status</th><th>In</th><th>Out</th><th title="Tick if time before the shift start is approved as overtime for this day">Early OT ok</th><th class="n">Hours</th><th class="n">OT</th><th>Check</th></tr></thead><tbody>`;
+  if(!emps.length) h+=`<tr><td colspan="11" class="hint">No active employees for this date. Add them in the Employees tab.</td></tr>`;
   for(const e of emps){
     const w=WORK[e.id]; if(!w) continue;
     const sh=DB.shifts.find(s=>s.id===w.shift), c=dayCalc(w,sh,DB.settings), t=ST[w.status].times;
@@ -393,6 +404,7 @@ function renderDaily(){
       <td><select data-f="status">${stOpts(w.status)}</select></td>
       <td><input type="time" data-f="in" value="${w.in||''}" ${t?'':'disabled'}></td>
       <td><input type="time" data-f="out" value="${w.out||''}" ${t?'':'disabled'}></td>
+      <td style="text-align:center"><input type="checkbox" data-f="eot" ${w.eot?'checked':''} ${w.status==='P'||w.status==='WW'?'':'disabled'}></td>
       <td class="n">${t?fmtHM(c.worked):''}</td><td class="n">${c.ot?'<b>'+fmtHM(c.ot)+'</b>':''}</td>
       <td class="hint" style="color:var(--bad)">${esc(c.err)}</td></tr>`;
   }
@@ -409,7 +421,9 @@ $('dTbl').addEventListener('change',e=>{
     const sh=DB.shifts.find(s=>s.id===w.shift);
     if(ST[el.value].times){ if(!w.in&&sh) w.in=sh.start; if(!w.out&&sh) w.out=sh.end; } else { w.in=''; w.out=''; }
   }
-  w[f]=el.value; DIRTY=true; renderDaily();
+  if(f==='eot') w.eot=el.checked; else w[f]=el.value;
+  if(f==='status'&&el.value!=='P'&&el.value!=='WW') w.eot=false;
+  DIRTY=true; renderDaily();
 });
 $('dDate').onchange=e=>{ if(e.target.value) openDay(e.target.value); };
 $('dPrev').onclick=()=>openDay(addDays(CUR,-1));
@@ -438,8 +452,8 @@ function renderRegister(){
   for(const o of P.rows){
     h+=`<tr><td class="l"><b>${esc(o.emp.id)}</b> ${esc(o.emp.name)}</td>`;
     for(const d of o.days){
-      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}`:'';
-      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.calc?.ot?'<sup>+</sup>':''}</td>`;
+      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}${d.rec.eot?' · early OT approved':''}${d.wwCancelled?' · worked on week-off, paid as normal day (absent in previous 7 days)':''}`:'';
+      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.wwCancelled?'*':''}${d.calc?.ot?'<sup>+</sup>':''}</td>`;
     }
     h+=`<td>${o.P+o.HD*0.5}</td><td>${o.A}</td><td>${fmtHM(o.ot)}</td></tr>`;
   }
@@ -457,7 +471,7 @@ const PCOLS=[
   ['Absent',o=>o.A,'n'],['Not Marked',o=>o.notMarked,'n'],['Paid Days',o=>o.paidDays,'n'],
   ['Base Pay',o=>o.base,'m'],
   ['OT Hrs',o=>o.ot,'h'],['OT Pay',o=>o.otPay,'m'],
-  ['WO Worked',o=>o.WW,'n'],['WO Hrs',o=>o.woMin,'h'],['WO Pay',o=>o.woPay,'m'],
+  ['WO Worked',o=>o.WW,'n'],['WO Cancelled',o=>o.wwCancel,'n'],['WO Hrs',o=>o.woMin,'h'],['WO Pay',o=>o.woPay,'m'],
   ['PH Worked',o=>o.PW,'n'],['PH Hrs',o=>o.phMin,'h'],['PH Pay',o=>o.phPay,'m'],
   ['Gross',o=>o.gross,'m'],['Deductions',o=>o.ded,'ded'],['Net Pay',o=>o.net,'m'],
 ];
