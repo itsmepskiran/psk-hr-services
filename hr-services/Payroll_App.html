@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crew Attendance & Payroll</title>
+<script src="xlsx.full.min.js"></script>
+<script>if(!window.XLSX) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');</script>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1c2430;--mute:#667085;--line:#e2e6ed;--acc:#1f5fbf;--acc2:#e8f0fc;--ok:#16794c;--okbg:#e7f6ee;--warn:#b54708;--warnbg:#fff4e5;--bad:#b42318;--badbg:#fdecea}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--ink);color:#fff;padding:0 20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;padding:14px 0;font-weight:600;white-space:nowrap}
+nav{display:flex;gap:2px;flex-wrap:wrap}
+nav button{background:none;border:0;color:#b9c3d3;padding:15px 12px;font:inherit;cursor:pointer;border-bottom:3px solid transparent}
+nav button.act{color:#fff;border-bottom-color:#5b9cff}
+main{max-width:1400px;margin:0 auto;padding:18px 16px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 12px;font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sp{flex:1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);min-width:140px}
+input,select{font:inherit;padding:6px 8px;border:1px solid #cfd6e0;border-radius:6px;background:#fff;color:var(--ink)}
+input[type=time]{width:112px}
+button.b{font:inherit;padding:7px 13px;border-radius:6px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer;font-weight:500;white-space:nowrap}
+button.s{background:#fff;color:var(--acc)}
+button.d{background:#fff;color:var(--bad);border-color:#e7b4ae}
+button.sm{padding:4px 9px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.big{font-size:15px;padding:10px 22px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+.b-ok{background:var(--okbg);color:var(--ok)} .b-warn{background:var(--warnbg);color:var(--warn)} .b-bad{background:var(--badbg);color:var(--bad)}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:calc(100vh - 260px)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#eef1f6;font-weight:600;z-index:2}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.tot td{font-weight:700;background:#f3f6fb;position:sticky;bottom:0}
+tr.bad td{background:var(--badbg)}
+tr.dim td{color:#9aa3b2}
+.hint{font-size:12px;color:var(--mute)}
+.warnbox{background:var(--warnbg);color:var(--warn);border:1px solid #f5c98b;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:13px}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;z-index:50;font-weight:500;box-shadow:0 6px 20px #0003}
+/* register grid */
+.reg th,.reg td{padding:4px 5px;text-align:center;font-size:12px}
+.reg th.l,.reg td.l{text-align:left;position:sticky;left:0;background:#fff;z-index:1}
+.reg th.l{background:#eef1f6;z-index:3}
+.reg th.dh{cursor:pointer} .reg th.dh:hover{background:var(--acc2)}
+.reg th.ns{color:var(--bad)}
+.reg th.sun{background:#e4e9f2}
+.c-P{background:#e7f6ee;color:#16794c}.c-A{background:#fdecea;color:#b42318}.c-WO{background:#eef1f6;color:#667085}
+.c-WW{background:#dbe8ff;color:#1f5fbf;font-weight:700}.c-PH{background:#fff4d6;color:#8a6100}.c-PW{background:#ffe7b3;color:#8a4b00;font-weight:700}
+.c-CO{background:#f1e8ff;color:#6b3fb5}.c-HD{background:#e8f7f7;color:#0e6e6e}.c-NJ{color:#c0c6d0}.c-NM{color:#c0c6d0}
+.legend span{padding:2px 7px;border-radius:4px;margin-right:6px;font-size:12px;display:inline-block;margin-bottom:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
+.stat div{font-size:12px;color:var(--mute)} .stat b{font-size:19px;font-variant-numeric:tabular-nums}
+input.ded{width:100px;text-align:right}
+.modal{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.modal .card{width:min(560px,100%);max-height:90vh;overflow:auto;margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="coName">Crew Attendance & Payroll</h1>
+  <nav id="nav">
+    <button data-t="daily" class="act">Daily Attendance</button>
+    <button data-t="register">Monthly Register</button>
+    <button data-t="payroll">Payroll</button>
+    <button data-t="emps">Employees</button>
+    <button data-t="shifts">Shifts</button>
+    <button data-t="settings">Settings & Backup</button>
+  </nav>
+</header>
+<main>
+<div id="backupWarn" class="warnbox hidden"></div>
+
+<!-- DAILY -->
+<section id="t-daily">
+  <div class="card">
+    <div class="row">
+      <button class="b s sm" id="dPrev">◀</button>
+      <input type="date" id="dDate">
+      <button class="b s sm" id="dNext">▶</button>
+      <b id="dDay"></b>
+      <span id="dBadge"></span>
+      <span class="sp"></span>
+      <button class="b s sm" id="dAllP">Mark all Present</button>
+      <button class="b s sm" id="dFill">Fill shift times in empty rows</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tw"><table id="dTbl"></table></div>
+    <div class="row" style="margin-top:14px">
+      <span class="hint">In/Out are pre-filled with the shift timing — change only for late, early or extra hours. Night shifts (Out next morning) are handled automatically.</span>
+      <span class="sp"></span>
+      <span id="dDirty" class="badge b-warn hidden">Unsaved changes</span>
+      <button class="b big" id="dSubmit">Submit attendance</button>
+    </div>
+  </div>
+</section>
+
+<!-- REGISTER -->
+<section id="t-register" class="hidden">
+  <div class="card">
+    <div class="row"><input type="month" id="rMonth"><span class="hint">Click a date to open that day's attendance. Red dates are not submitted yet.</span></div>
+    <div class="legend" style="margin-top:10px"><span class="c-P">P Present</span><span class="c-HD">HD Half day</span><span class="c-A">A Absent</span><span class="c-WO">WO Week-off</span><span class="c-WW">WW Worked on week-off</span><span class="c-PH">PH Holiday</span><span class="c-PW">PW Worked on holiday</span><span class="c-CO">CO Comp-off</span></div>
+  </div>
+  <div class="card"><div class="tw"><table class="reg" id="rTbl"></table></div></div>
+</section>
+
+<!-- PAYROLL -->
+<section id="t-payroll" class="hidden">
+  <div class="card">
+    <div class="row">
+      <input type="month" id="pMonth">
+      <input type="search" id="pQ" placeholder="Search name / ID">
+      <span class="sp"></span>
+      <button class="b s" id="pSlips">Print payslips</button>
+      <button class="b" id="pXls">Export to Excel</button>
+    </div>
+  </div>
+  <div id="pWarn" class="warnbox hidden"></div>
+  <div class="stats" id="pStats"></div>
+  <div class="card"><div class="tw"><table id="pTbl"></table></div>
+  <div class="hint" style="margin-top:8px">Per day = Salary ÷ <span id="pDiv"></span>. Hourly = per day ÷ that day's shift hours. OT = time worked before shift start + after shift end. Week-off / holiday work = hours × hourly × multiplier. No statutory deductions. Type advances or other deductions directly in the Deductions column — saved automatically.</div></div>
+</section>
+
+<!-- EMPLOYEES -->
+<section id="t-emps" class="hidden">
+  <div class="card">
+    <div class="row"><h2 style="margin:0">Employees</h2><span class="sp"></span>
+      <label class="hint"><input type="checkbox" id="eShowIn"> Show inactive</label>
+      <button class="b" id="eAdd">+ Add employee</button></div>
+  </div>
+  <div class="card"><div class="tw"><table id="eTbl"></table></div></div>
+</section>
+
+<!-- SHIFTS -->
+<section id="t-shifts" class="hidden">
+  <div class="card">
+    <div class="row"><h2 style="margin:0">Shifts</h2><span class="sp"></span><button class="b" id="sAdd">+ Add shift</button></div>
+    <p class="hint">These appear in the Shift dropdown on the daily page. Shift length is used as the normal working hours for OT and hourly rate.</p>
+    <div class="tw"><table id="sTbl"></table></div>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="t-settings" class="hidden">
+  <div class="card">
+    <h2>Pay rules</h2>
+    <div class="grid2">
+      <label class="f">Company name (for payslips)<input id="stCo"></label>
+      <label class="f">Per-day rate = Salary ÷
+        <select id="stDiv"><option value="month">Days in the month (28–31)</option><option value="30">30</option><option value="26">26</option></select></label>
+      <label class="f">OT rate (× hourly)<input id="stOt" type="number" step="0.25" min="0"></label>
+      <label class="f">Ignore OT below (minutes per day)<input id="stOtMin" type="number" step="5" min="0"></label>
+      <label class="f">Week-off work rate (× hourly)<input id="stWo" type="number" step="0.25" min="0"></label>
+      <label class="f">Holiday (PH) work rate (× hourly)<input id="stPh" type="number" step="0.25" min="0"></label>
+    </div>
+    <div class="row" style="margin-top:12px;gap:18px">
+      <label class="hint"><input type="checkbox" id="stPWO"> Week-off is a paid day</label>
+      <label class="hint"><input type="checkbox" id="stPPH"> Public holiday is a paid day</label>
+      <label class="hint"><input type="checkbox" id="stPCO"> Comp-off is a paid day</label>
+    </div>
+    <p class="hint">Changes apply instantly to the Payroll tab.</p>
+  </div>
+  <div class="card">
+    <h2>Backup</h2>
+    <p class="hint" style="margin-top:0">All data is saved inside this browser on this computer. Clearing browser history/data, or using a different browser, will not show it. Download a backup at least once a week and keep it in a safe folder (or Google Drive).</p>
+    <div class="row">
+      <button class="b" id="bkDown">Download backup</button>
+      <button class="b s" id="bkUp">Restore from backup</button>
+      <input type="file" id="bkFile" accept=".json" class="hidden">
+      <span class="sp"></span>
+      <button class="b d" id="bkReset">Erase all data</button>
+    </div>
+    <p class="hint" id="bkLast"></p>
+  </div>
+</section>
+</main>
+
+<div id="modal" class="modal hidden"><div class="card" id="modalBody"></div></div>
+
+<script>
+/* =====================  CALCULATION ENGINE (pure)  ===================== */
+const STATUSES=[
+  {k:'P', label:'Present',              times:true},
+  {k:'HD',label:'Half day',             times:true},
+  {k:'A', label:'Absent',               times:false},
+  {k:'WO',label:'Week-off',             times:false},
+  {k:'WW',label:'Worked on week-off',   times:true},
+  {k:'PH',label:'Public holiday',       times:false},
+  {k:'PW',label:'Worked on holiday',    times:true},
+  {k:'CO',label:'Comp-off',             times:false},
+];
+const ST=Object.fromEntries(STATUSES.map(s=>[s.k,s]));
+const toMin=t=>{ if(!t) return null; const m=String(t).match(/^(\d{1,2}):(\d{2})/); return m? (+m[1]*60+ +m[2])%1440 : null; };
+const fmtHM=m=>{ if(m==null||isNaN(m)) return ''; m=Math.round(m); return Math.floor(m/60)+':'+String(m%60).padStart(2,'0'); };
+const shiftLen=sh=>{ const s=toMin(sh.start), e=toMin(sh.end); return s==null||e==null?null:((e-s+1440)%1440)||1440; };
+
+// One day's record -> worked/ot/short minutes. rec={status,shift,in,out}; sh = shift object
+function dayCalc(rec, sh, set){
+  const r={worked:0,ot:0,short:0,err:''};
+  if(!rec || !ST[rec.status]?.times) return r;
+  if(!sh){ r.err='No shift'; return r; }
+  const li=toMin(rec.in), lo=toMin(rec.out);
+  if(li==null||lo==null){ r.err='In/Out missing'; return r; }
+  const S=toMin(sh.start), E=S+shiftLen(sh);
+  let L=li; if(E>1440 && L<S-360) L+=1440;          // night shift, came in after midnight
+  let O=lo; while(O<=L) O+=1440;
+  r.worked=O-L;
+  if(r.worked>16*60) r.err='Over 16 hrs — check times';
+  if(rec.status==='P'){
+    let ot=Math.max(0,S-L)+Math.max(0,O-E);
+    if(ot<(set.otMin||0)) ot=0;
+    r.ot=ot;
+    r.short=Math.max(0,L-S)+Math.max(0,E-O);
+  }
+  return r;
+}
+
+const daysInMonth=ym=>{ const [y,m]=ym.split('-').map(Number); return new Date(y,m,0).getDate(); };
+const ymd=(y,m,d)=>`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+// Month payroll for all employees. db = whole database
+function monthPayroll(db, ym){
+  const set=db.settings, nDays=daysInMonth(ym), [Y,M]=ym.split('-').map(Number);
+  const divisor = set.divisor==='month'? nDays : +set.divisor;
+  const shiftById=Object.fromEntries(db.shifts.map(s=>[s.id,s]));
+  const today=localISO(new Date());
+  const out=[];
+  for(const e of db.employees){
+    const o={emp:e, P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0, notMarked:0, notJoined:0,
+             worked:0, ot:0, short:0, woMin:0, phMin:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
+    o.perDay = (+e.salary||0)/divisor;
+    for(let d=1; d<=nDays; d++){
+      const date=ymd(Y,M,d), rec=db.att[date]?.rows?.[e.id];
+      const submitted=!!db.att[date]?.submitted;
+      if(e.doj && date<e.doj){ o.notJoined++; o.days.push({date,code:'NJ'}); continue; }
+      if(!rec || !submitted){ if(date<=today) o.notMarked++; o.days.push({date,code:'NM'}); continue; }
+      o.anyRec=true;
+      o[rec.status]++;
+      const sh=shiftById[rec.shift]; const c=dayCalc(rec,sh,set);
+      const hourly = sh? o.perDay/(shiftLen(sh)/60) : 0;
+      o.worked+=c.worked; o.ot+=c.ot; o.short+=c.short;
+      o.otPay += hourly*(c.ot/60)*set.otMult;
+      if(rec.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
+      if(rec.status==='PW'){ o.phMin+=c.worked; o.phPay+=hourly*(c.worked/60)*set.phMult; }
+      if(c.err) o.errs.push(date.slice(8)+': '+c.err);
+      o.days.push({date,code:rec.status,rec,calc:c});
+    }
+    o.paidDays = o.P + 0.5*o.HD + (set.paidWO?o.WO:0) + (set.paidPH?o.PH:0) + (set.paidCO?o.CO:0);
+    o.base = o.perDay*o.paidDays;
+    o.gross = o.base + o.otPay + o.woPay + o.phPay;
+    o.ded = +(db.deductions[ym]?.[e.id]||0);
+    o.net = o.gross - o.ded;
+    if(e.status==='Active' || o.anyRec) out.push(o);
+  }
+  return {rows:out, divisor, nDays};
+}
+function localISO(d){ return ymd(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+/* =====================  END ENGINE  ===================== */
+
+/* ---------- storage ---------- */
+const KEY='crewPayrollDB_v1';
+const SEED_SHIFTS=[
+  {id:'s1',name:'General',start:'09:00',end:'18:00'},
+  {id:'s2',name:'Day (10 hr)',start:'08:00',end:'18:00'},
+  {id:'s3',name:'Morning',start:'06:00',end:'14:00'},
+  {id:'s4',name:'Evening',start:'14:00',end:'22:00'},
+  {id:'s5',name:'Night',start:'22:00',end:'06:00'},
+];
+const SEED_EMPS=[
+  ['ORW-01','K AJAY BABU','Crew Lead',35000,'Active','s1'],
+  ['ORW-02','RAMENDRA','Master Gas cutter',28000,'Active','s1'],
+  ['ORW-03','RAVI PASWAN','Welder',28000,'Active','s3'],
+  ['ORW-04','KESHNATH SINGH','Grinder',18000,'Active','s3'],
+  ['ORW-05','LAVKUSH','Helper',16000,'Inactive','s1'],
+  ['ORW-06','UMESH','Welder',23000,'Inactive','s1'],
+  ['ORW-07','SANJAY BEHRA','Fabricator',35000,'Active','s1'],
+  ['ORW-08','RAJA','Helper',16000,'Inactive','s1'],
+  ['ORW-09','HAJIKUL ALAM','Fitter',36000,'Active','s2'],
+  ['ORW-10','RASEL','Fitter',30000,'Active','s2'],
+  ['ORW-11','HASIBUL','Helper',24000,'Active','s2'],
+  ['ORW-12','MANIK','Helper',24000,'Active','s2'],
+  ['ORW-13','SUMAN','Helper',24000,'Active','s2'],
+  ['ORW-14','SUKUR ALAM','Helper',24000,'Active','s2'],
+].map(([id,name,role,salary,status,shift])=>({id,name,role,salary,status,shift,doj:'',weekOff:0}));
+const DEFAULT_SETTINGS={company:'',divisor:'month',otMult:1,otMin:0,woMult:2,phMult:2,paidWO:true,paidPH:true,paidCO:true};
+
+let DB;
+function load(){
+  try{ DB=JSON.parse(localStorage.getItem(KEY)); }catch(e){ DB=null; }
+  if(!DB){ DB={version:1,employees:SEED_EMPS,shifts:SEED_SHIFTS,att:{},deductions:{},settings:{...DEFAULT_SETTINGS},lastBackup:null}; save(); }
+  DB.settings={...DEFAULT_SETTINGS,...DB.settings};
+}
+function save(){
+  try{ localStorage.setItem(KEY,JSON.stringify(DB)); }
+  catch(e){ alert('Could not save — browser storage is blocked or full. Download a backup now.'); }
+}
+
+/* ---------- helpers ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>(+v||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const shiftLabel=s=>`${s.name} (${t12(s.start)}–${t12(s.end)})`;
+function t12(t){ const m=toMin(t); if(m==null) return ''; let h=Math.floor(m/60), mi=m%60, ap=h>=12?'pm':'am'; h=h%12||12; return h+(mi?':'+String(mi).padStart(2,'0'):'')+ap; }
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+const dateObj=s=>{ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays=(s,n)=>{ const d=dateObj(s); d.setDate(d.getDate()+n); return localISO(d); };
+const prettyDate=s=>dateObj(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+/* ---------- tabs ---------- */
+let TAB='daily';
+$('nav').onclick=e=>{ const b=e.target.closest('button'); if(!b) return;
+  if(TAB==='daily' && b.dataset.t!=='daily' && DIRTY){
+    if(!confirm('You have unsaved attendance changes. Leave without submitting?')) return;
+    DIRTY=false; openDay(CUR);
+  }
+  TAB=b.dataset.t; document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('act',x===b));
+  document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='t-'+TAB));
+  ({daily:renderDaily,register:renderRegister,payroll:renderPayroll,emps:renderEmps,shifts:renderShifts,settings:renderSettings})[TAB]();
+};
+window.addEventListener('beforeunload',e=>{ if(DIRTY){ e.preventDefault(); e.returnValue=''; } });
+
+/* =====================  DAILY  ===================== */
+let CUR=null, WORK={}, DIRTY=false;
+function lastShiftFor(empId, before){
+  const dates=Object.keys(DB.att).filter(d=>d<before && DB.att[d].submitted && DB.att[d].rows[empId]?.shift).sort();
+  return dates.length? DB.att[dates[dates.length-1]].rows[empId].shift : null;
+}
+function empsForDate(date){
+  const rec=DB.att[date]?.rows||{};
+  return DB.employees.filter(e=> rec[e.id] || (e.status==='Active' && (!e.doj || e.doj<=date)));
+}
+function openDay(date){
+  if(DIRTY && CUR!==date && !confirm('You have unsaved changes for '+prettyDate(CUR)+'. Discard them?')) { $('dDate').value=CUR; return; }
+  CUR=date; DIRTY=false; WORK={};
+  const saved=DB.att[date]?.rows||{}, wd=dateObj(date).getDay();
+  for(const e of empsForDate(date)){
+    if(saved[e.id]) { WORK[e.id]={...saved[e.id]}; continue; }
+    const shift=lastShiftFor(e.id,date)||e.shift||DB.shifts[0]?.id;
+    const sh=DB.shifts.find(s=>s.id===shift);
+    const status= (e.weekOff!==''&&e.weekOff!=null&&+e.weekOff===wd)?'WO':'P';
+    WORK[e.id]={shift,status,in:status==='P'&&sh?sh.start:'',out:status==='P'&&sh?sh.end:''};
+  }
+  renderDaily();
+}
+function renderDaily(){
+  $('dDate').value=CUR;
+  $('dDay').textContent=DOW[dateObj(CUR).getDay()];
+  const a=DB.att[CUR];
+  $('dBadge').innerHTML= a?.submitted ? `<span class="badge b-ok">Submitted ${new Date(a.submitted).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</span>` : `<span class="badge b-warn">Not submitted</span>`;
+  $('dDirty').classList.toggle('hidden',!DIRTY);
+  const emps=empsForDate(CUR);
+  const shiftOpts=id=>DB.shifts.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${esc(shiftLabel(s))}</option>`).join('');
+  const stOpts=k=>STATUSES.map(s=>`<option value="${s.k}" ${s.k===k?'selected':''}>${s.label}</option>`).join('');
+  let h=`<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th>Assigned Shift</th><th>Status</th><th>In</th><th>Out</th><th class="n">Hours</th><th class="n">OT</th><th>Check</th></tr></thead><tbody>`;
+  if(!emps.length) h+=`<tr><td colspan="10" class="hint">No active employees for this date. Add them in the Employees tab.</td></tr>`;
+  for(const e of emps){
+    const w=WORK[e.id]; if(!w) continue;
+    const sh=DB.shifts.find(s=>s.id===w.shift), c=dayCalc(w,sh,DB.settings), t=ST[w.status].times;
+    h+=`<tr data-id="${esc(e.id)}" class="${c.err?'bad':''}"><td>${esc(e.id)}</td><td><b>${esc(e.name)}</b></td><td class="hint">${esc(e.role)}</td>
+      <td><select data-f="shift">${shiftOpts(w.shift)}</select></td>
+      <td><select data-f="status">${stOpts(w.status)}</select></td>
+      <td><input type="time" data-f="in" value="${w.in||''}" ${t?'':'disabled'}></td>
+      <td><input type="time" data-f="out" value="${w.out||''}" ${t?'':'disabled'}></td>
+      <td class="n">${t?fmtHM(c.worked):''}</td><td class="n">${c.ot?'<b>'+fmtHM(c.ot)+'</b>':''}</td>
+      <td class="hint" style="color:var(--bad)">${esc(c.err)}</td></tr>`;
+  }
+  $('dTbl').innerHTML=h+'</tbody>';
+}
+$('dTbl').addEventListener('change',e=>{
+  const el=e.target, tr=el.closest('tr'); if(!tr||!el.dataset.f) return;
+  const w=WORK[tr.dataset.id], f=el.dataset.f;
+  if(f==='shift'){
+    const old=DB.shifts.find(s=>s.id===w.shift), nw=DB.shifts.find(s=>s.id===el.value);
+    if(ST[w.status].times && nw){ if(!w.in||(old&&w.in===old.start)) w.in=nw.start; if(!w.out||(old&&w.out===old.end)) w.out=nw.end; }
+  }
+  if(f==='status'){
+    const sh=DB.shifts.find(s=>s.id===w.shift);
+    if(ST[el.value].times){ if(!w.in&&sh) w.in=sh.start; if(!w.out&&sh) w.out=sh.end; } else { w.in=''; w.out=''; }
+  }
+  w[f]=el.value; DIRTY=true; renderDaily();
+});
+$('dDate').onchange=e=>{ if(e.target.value) openDay(e.target.value); };
+$('dPrev').onclick=()=>openDay(addDays(CUR,-1));
+$('dNext').onclick=()=>openDay(addDays(CUR,1));
+$('dAllP').onclick=()=>{ for(const id in WORK){ const w=WORK[id]; if(w.status!=='P'){ const sh=DB.shifts.find(s=>s.id===w.shift); w.status='P'; w.in=w.in||sh?.start||''; w.out=w.out||sh?.end||''; } } DIRTY=true; renderDaily(); };
+$('dFill').onclick=()=>{ for(const id in WORK){ const w=WORK[id], sh=DB.shifts.find(s=>s.id===w.shift); if(ST[w.status].times&&sh){ w.in=w.in||sh.start; w.out=w.out||sh.end; } } DIRTY=true; renderDaily(); };
+$('dSubmit').onclick=()=>{
+  const probs=[];
+  for(const id in WORK){ const w=WORK[id], c=dayCalc(w,DB.shifts.find(s=>s.id===w.shift),DB.settings); if(c.err) probs.push(id+': '+c.err); }
+  if(probs.some(p=>/missing|No shift/.test(p))){ alert('Please fix before submitting:\n\n'+probs.join('\n')); return; }
+  if(probs.length && !confirm('Please check:\n\n'+probs.join('\n')+'\n\nSubmit anyway?')) return;
+  const was=!!DB.att[CUR]?.submitted;
+  DB.att[CUR]={submitted:Date.now(),rows:JSON.parse(JSON.stringify(WORK))};
+  save(); DIRTY=false; renderDaily(); checkBackup();
+  toast((was?'Updated':'Submitted')+' attendance for '+prettyDate(CUR));
+};
+
+/* =====================  REGISTER  ===================== */
+function renderRegister(){
+  if(!$('rMonth').value) $('rMonth').value=CUR?CUR.slice(0,7):localISO(new Date()).slice(0,7);
+  const ym=$('rMonth').value, P=monthPayroll(DB,ym), n=P.nDays, today=localISO(new Date());
+  let h='<thead><tr><th class="l">Crew</th>';
+  for(let d=1;d<=n;d++){ const ds=ym+'-'+String(d).padStart(2,'0'), wd=dateObj(ds).getDay(), sub=DB.att[ds]?.submitted;
+    h+=`<th class="dh ${!sub&&ds<=today?'ns':''} ${wd===0?'sun':''}" data-d="${ds}" title="${prettyDate(ds)}${sub?'':' — not submitted'}">${d}<br><span class="hint">${DOW[wd][0]}</span></th>`; }
+  h+='<th>P</th><th>A</th><th>OT</th></tr></thead><tbody>';
+  for(const o of P.rows){
+    h+=`<tr><td class="l"><b>${esc(o.emp.id)}</b> ${esc(o.emp.name)}</td>`;
+    for(const d of o.days){
+      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}`:'';
+      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.calc?.ot?'<sup>+</sup>':''}</td>`;
+    }
+    h+=`<td>${o.P+o.HD*0.5}</td><td>${o.A}</td><td>${fmtHM(o.ot)}</td></tr>`;
+  }
+  $('rTbl').innerHTML=h+'</tbody>';
+}
+$('rMonth').onchange=renderRegister;
+$('rTbl').onclick=e=>{ const th=e.target.closest('th[data-d]'); if(!th) return; document.querySelector('#nav [data-t=daily]').click(); openDay(th.dataset.d); };
+
+/* =====================  PAYROLL  ===================== */
+let PAY=null;
+const PCOLS=[
+  ['Crew ID',o=>o.emp.id],['Name',o=>o.emp.name],['Role',o=>o.emp.role],
+  ['Salary',o=>+o.emp.salary,'m'],['Per Day',o=>o.perDay,'m'],
+  ['Present',o=>o.P,'n'],['Half Day',o=>o.HD,'n'],['Week-off',o=>o.WO,'n'],['Holiday',o=>o.PH,'n'],['Comp-off',o=>o.CO,'n'],
+  ['Absent',o=>o.A,'n'],['Not Marked',o=>o.notMarked,'n'],['Paid Days',o=>o.paidDays,'n'],
+  ['Base Pay',o=>o.base,'m'],
+  ['OT Hrs',o=>o.ot,'h'],['OT Pay',o=>o.otPay,'m'],
+  ['WO Worked',o=>o.WW,'n'],['WO Hrs',o=>o.woMin,'h'],['WO Pay',o=>o.woPay,'m'],
+  ['PH Worked',o=>o.PW,'n'],['PH Hrs',o=>o.phMin,'h'],['PH Pay',o=>o.phPay,'m'],
+  ['Gross',o=>o.gross,'m'],['Deductions',o=>o.ded,'ded'],['Net Pay',o=>o.net,'m'],
+];
+function renderPayroll(){
+  if(!$('pMonth').value) $('pMonth').value=CUR?CUR.slice(0,7):localISO(new Date()).slice(0,7);
+  const ym=$('pMonth').value; PAY=monthPayroll(DB,ym);
+  $('pDiv').textContent=PAY.divisor+(DB.settings.divisor==='month'?' (days in this month)':'');
+  const q=$('pQ').value.toLowerCase();
+  const rows=PAY.rows.filter(o=>!q||o.emp.id.toLowerCase().includes(q)||o.emp.name.toLowerCase().includes(q));
+  const nm=PAY.rows.reduce((a,o)=>a+o.notMarked,0), errs=PAY.rows.filter(o=>o.errs.length);
+  const msgs=[];
+  const unsub=[]; for(let d=1;d<=PAY.nDays;d++){ const ds=ym+'-'+String(d).padStart(2,'0'); if(ds<=localISO(new Date())&&!DB.att[ds]?.submitted) unsub.push(d); }
+  if(unsub.length) msgs.push(`Attendance not submitted for ${unsub.length} day(s): ${unsub.join(', ')}. Those days are unpaid until submitted.`);
+  if(errs.length) msgs.push('Check times for: '+errs.map(o=>o.emp.id+' ('+o.errs.join('; ')+')').join(' · '));
+  $('pWarn').innerHTML=msgs.join('<br>'); $('pWarn').classList.toggle('hidden',!msgs.length);
+  const sum=f=>rows.reduce((a,o)=>a+(+f(o)||0),0);
+  $('pStats').innerHTML=[['Employees',rows.length],['Base pay','₹'+money(sum(o=>o.base))],['OT pay','₹'+money(sum(o=>o.otPay))],['Week-off + holiday pay','₹'+money(sum(o=>o.woPay+o.phPay))],['Deductions','₹'+money(sum(o=>o.ded))],['Net payable','₹'+money(sum(o=>o.net))]]
+    .map(([a,b])=>`<div class="stat"><div>${a}</div><b>${b}</b></div>`).join('');
+  let h='<thead><tr>'+PCOLS.map(c=>`<th class="${c[2]?'n':''}">${c[0]}</th>`).join('')+'</tr></thead><tbody>';
+  for(const o of rows){
+    h+=`<tr class="${o.errs.length?'bad':''} ${o.emp.status!=='Active'?'dim':''}">`+PCOLS.map(c=>{const v=c[1](o);
+      if(c[2]==='ded') return `<td class="n"><input class="ded" type="number" min="0" step="1" data-id="${esc(o.emp.id)}" value="${o.ded||''}" placeholder="0"></td>`;
+      return `<td class="${c[2]?'n':''}">${c[2]==='m'?money(v):c[2]==='h'?fmtHM(v):c[2]==='n'?(v||''):esc(v)}</td>`;}).join('')+'</tr>';
+  }
+  h+='<tr class="tot">'+PCOLS.map((c,i)=>{ if(i===0) return '<td>Total</td>'; if(i===1) return `<td>${rows.length} crew</td>`;
+    if(['m','ded'].includes(c[2]) && c[0]!=='Per Day' && c[0]!=='Salary') return `<td class="n">${money(sum(c[1]))}</td>`;
+    if(c[2]==='h') return `<td class="n">${fmtHM(sum(c[1]))}</td>`; return '<td></td>'; }).join('')+'</tr>';
+  $('pTbl').innerHTML=h+'</tbody>';
+}
+$('pMonth').onchange=renderPayroll; $('pQ').oninput=renderPayroll;
+$('pTbl').addEventListener('change',e=>{ const el=e.target; if(!el.classList.contains('ded')) return;
+  const ym=$('pMonth').value; DB.deductions[ym]=DB.deductions[ym]||{}; DB.deductions[ym][el.dataset.id]=Math.max(0,+el.value||0); save(); renderPayroll(); });
+
+$('pXls').onclick=()=>{
+  if(!PAY) return; if(!window.XLSX){ alert('Excel export needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
+  const ym=$('pMonth').value, wb=XLSX.utils.book_new(), r2=v=>Math.round((+v||0)*100)/100;
+  const sumRows=[PCOLS.map(c=>c[0]), ...PAY.rows.map(o=>PCOLS.map(c=>{const v=c[1](o); return c[2]==='h'?r2(v/60):['m','ded'].includes(c[2])?r2(v):v;}))];
+  const s1=XLSX.utils.aoa_to_sheet(sumRows); s1['!cols']=PCOLS.map(c=>({wch:Math.max(9,c[0].length+2)})); s1['!cols'][1]={wch:22};
+  // register sheet in the same style as the paper register
+  const n=PAY.nDays, hdr1=['Crew ID','Name','Role','Salary'], hdr2=['','','',''];
+  for(let d=1;d<=n;d++){ const ds=ym+'-'+String(d).padStart(2,'0'); hdr1.push(prettyDate(ds),'',''); hdr2.push('Shift','In','Out'); }
+  const reg=[hdr1,hdr2];
+  for(const o of PAY.rows){ const r=[o.emp.id,o.emp.name,o.emp.role,+o.emp.salary];
+    for(const d of o.days){ if(d.rec){ const sh=DB.shifts.find(s=>s.id===d.rec.shift); const code=ST[d.rec.status];
+        if(code.times) r.push((sh?sh.name:'')+(d.rec.status!=='P'?' ['+d.rec.status+']':''), t12(d.rec.in), t12(d.rec.out)); else r.push(code.label,'',''); }
+      else r.push(d.code==='NJ'?'Not joined':'','',''); }
+    reg.push(r); }
+  const s2=XLSX.utils.aoa_to_sheet(reg); s2['!cols']=[{wch:9},{wch:20},{wch:14},{wch:9}];
+  const S=DB.settings, s3=XLSX.utils.aoa_to_sheet([['Setting','Value'],['Month',ym],['Per-day divisor',PAY.divisor],['OT rate (× hourly)',S.otMult],['Ignore OT below (min)',S.otMin],['Week-off work (× hourly)',S.woMult],['Holiday work (× hourly)',S.phMult],['Week-off paid',S.paidWO?'Yes':'No'],['Holiday paid',S.paidPH?'Yes':'No'],['Comp-off paid',S.paidCO?'Yes':'No'],['Statutory deductions','None'],['Hours columns','Decimal hours (1.5 = 1h 30m)'],['Generated',new Date().toLocaleString('en-IN')]]);
+  XLSX.utils.book_append_sheet(wb,s1,'Payroll'); XLSX.utils.book_append_sheet(wb,s2,'Attendance Register'); XLSX.utils.book_append_sheet(wb,s3,'Settings');
+  XLSX.writeFile(wb,`Payroll_${ym}.xlsx`);
+};
+
+$('pSlips').onclick=()=>{
+  if(!PAY) return; const ym=$('pMonth').value, mName=dateObj(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const co=esc(DB.settings.company||'Company Name');
+  const slip=o=>`<div class="slip"><div class="hd"><div><h2>${co}</h2><div>Payslip — ${mName}</div></div></div>
+   <table class="info"><tr><td>Crew ID</td><td><b>${esc(o.emp.id)}</b></td><td>Name</td><td><b>${esc(o.emp.name)}</b></td></tr>
+   <tr><td>Designation</td><td>${esc(o.emp.role)}</td><td>Monthly salary</td><td>₹${money(o.emp.salary)}</td></tr>
+   <tr><td>Days in month</td><td>${PAY.nDays}</td><td>Paid days</td><td>${o.paidDays}</td></tr>
+   <tr><td>Present / Half day</td><td>${o.P} / ${o.HD}</td><td>Absent</td><td>${o.A}</td></tr>
+   <tr><td>Week-off / Holiday / C-off</td><td>${o.WO} / ${o.PH} / ${o.CO}</td><td>OT hours</td><td>${fmtHM(o.ot)}</td></tr></table>
+   <table class="amt"><tr><th>Earnings</th><th class="r">Amount (₹)</th><th>Deductions</th><th class="r">Amount (₹)</th></tr>
+   <tr><td>Basic pay (${o.paidDays} days × ${money(o.perDay)})</td><td class="r">${money(o.base)}</td><td>Advance / other</td><td class="r">${money(o.ded)}</td></tr>
+   <tr><td>Overtime (${fmtHM(o.ot)} hrs)</td><td class="r">${money(o.otPay)}</td><td></td><td></td></tr>
+   <tr><td>Week-off work (${o.WW} day${o.WW===1?'':'s'}, ${fmtHM(o.woMin)} hrs)</td><td class="r">${money(o.woPay)}</td><td></td><td></td></tr>
+   <tr><td>Holiday work (${o.PW} day${o.PW===1?'':'s'}, ${fmtHM(o.phMin)} hrs)</td><td class="r">${money(o.phPay)}</td><td></td><td></td></tr>
+   <tr class="t"><td>Gross earnings</td><td class="r">${money(o.gross)}</td><td>Total deductions</td><td class="r">${money(o.ded)}</td></tr></table>
+   <div class="net">Net pay: ₹${money(o.net)}</div>
+   <div class="sig"><span>Employee signature</span><span>Authorised signatory</span></div></div>`;
+  const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups for this page to print payslips.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Payslips ${ym}</title><style>
+   body{font:13px "Segoe UI",Arial,sans-serif;color:#111;margin:0;padding:20px}
+   .slip{border:1px solid #333;padding:18px;margin:0 auto 24px;max-width:760px;page-break-after:always}
+   .hd{border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:10px} h2{margin:0 0 2px;font-size:18px}
+   table{width:100%;border-collapse:collapse;margin-bottom:10px} td,th{border:1px solid #bbb;padding:5px 7px;text-align:left}
+   .info td:nth-child(odd){color:#555;width:22%} th{background:#eee} .r{text-align:right} tr.t td{font-weight:700;background:#f4f4f4}
+   .net{font-size:17px;font-weight:700;text-align:right;margin:8px 0 34px} .sig{display:flex;justify-content:space-between;color:#555}
+   .sig span{border-top:1px solid #555;padding-top:4px;width:200px;text-align:center}
+   @media print{body{padding:0}.slip{margin:0 auto}}</style></head><body>${PAY.rows.filter(o=>o.anyRec).map(slip).join('')}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+};
+
+/* =====================  EMPLOYEES  ===================== */
+function renderEmps(){
+  const show=$('eShowIn').checked, sh=Object.fromEntries(DB.shifts.map(s=>[s.id,s]));
+  let h='<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th class="n">Salary</th><th>Default shift</th><th>Weekly off</th><th>Date of joining</th><th>Status</th><th></th></tr></thead><tbody>';
+  for(const e of DB.employees.filter(e=>show||e.status==='Active'))
+    h+=`<tr class="${e.status!=='Active'?'dim':''}"><td><b>${esc(e.id)}</b></td><td>${esc(e.name)}</td><td>${esc(e.role)}</td><td class="n">${money(e.salary)}</td><td>${sh[e.shift]?esc(shiftLabel(sh[e.shift])):'—'}</td>
+      <td>${e.weekOff===''||e.weekOff==null?'None':DOW[e.weekOff]}</td><td>${e.doj?prettyDate(e.doj):'—'}</td><td>${esc(e.status)}</td>
+      <td><button class="b s sm" data-edit="${esc(e.id)}">Edit</button></td></tr>`;
+  $('eTbl').innerHTML=h+'</tbody>';
+}
+$('eShowIn').onchange=renderEmps;
+$('eAdd').onclick=()=>empForm(null);
+$('eTbl').onclick=e=>{ const b=e.target.closest('[data-edit]'); if(b) empForm(DB.employees.find(x=>x.id===b.dataset.edit)); };
+function empForm(emp){
+  const e=emp||{id:'',name:'',role:'',salary:'',shift:DB.shifts[0]?.id,weekOff:0,doj:'',status:'Active'};
+  $('modalBody').innerHTML=`<h2>${emp?'Edit':'Add'} employee</h2><div class="grid2">
+   <label class="f">Crew ID *<input id="fId" value="${esc(e.id)}" ${emp?'disabled':''}></label>
+   <label class="f">Name *<input id="fName" value="${esc(e.name)}"></label>
+   <label class="f">Role / Designation<input id="fRole" value="${esc(e.role)}"></label>
+   <label class="f">Monthly salary (₹) *<input id="fSal" type="number" min="0" value="${esc(e.salary)}"></label>
+   <label class="f">Default shift<select id="fShift">${DB.shifts.map(s=>`<option value="${s.id}" ${s.id===e.shift?'selected':''}>${esc(shiftLabel(s))}</option>`).join('')}</select></label>
+   <label class="f">Weekly off<select id="fWo"><option value="">None</option>${DOW.map((d,i)=>`<option value="${i}" ${String(e.weekOff)===String(i)?'selected':''}>${d}</option>`).join('')}</select></label>
+   <label class="f">Date of joining<input id="fDoj" type="date" value="${esc(e.doj)}"></label>
+   <label class="f">Status<select id="fSt"><option ${e.status==='Active'?'selected':''}>Active</option><option ${e.status==='Inactive'?'selected':''}>Inactive</option></select></label></div>
+   <p class="hint">Default shift is used the first time; after that the daily page remembers each person's last shift.</p>
+   <div class="row" style="margin-top:14px">${emp?'<button class="b d" id="fDel">Delete</button>':''}<span class="sp"></span><button class="b s" id="fCancel">Cancel</button><button class="b" id="fSave">Save</button></div>`;
+  $('modal').classList.remove('hidden');
+  $('fCancel').onclick=closeModal;
+  if(emp) $('fDel').onclick=()=>{ if(!confirm(`Delete ${emp.name}? Past attendance stays in records, but they will disappear from lists. Marking them Inactive is usually better.`)) return;
+    DB.employees=DB.employees.filter(x=>x!==emp); save(); closeModal(); renderEmps(); };
+  $('fSave').onclick=()=>{
+    const id=$('fId').value.trim(), name=$('fName').value.trim(), sal=+$('fSal').value;
+    if(!id||!name||!(sal>0)){ alert('Crew ID, Name and Salary are required.'); return; }
+    if(!emp && DB.employees.some(x=>x.id.toLowerCase()===id.toLowerCase())){ alert('That Crew ID already exists.'); return; }
+    const rec={id,name,role:$('fRole').value.trim(),salary:sal,shift:$('fShift').value,weekOff:$('fWo').value===''?'':+$('fWo').value,doj:$('fDoj').value,status:$('fSt').value};
+    if(emp) Object.assign(emp,rec); else DB.employees.push(rec);
+    save(); closeModal(); renderEmps(); if(CUR&&!DIRTY) openDay(CUR); toast('Employee saved');
+  };
+}
+function closeModal(){ $('modal').classList.add('hidden'); }
+$('modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
+
+/* =====================  SHIFTS  ===================== */
+function renderShifts(){
+  let h='<thead><tr><th>Shift name</th><th>Start</th><th>End</th><th class="n">Hours</th><th></th></tr></thead><tbody>';
+  for(const s of DB.shifts) h+=`<tr data-id="${s.id}"><td><input data-f="name" value="${esc(s.name)}"></td><td><input type="time" data-f="start" value="${s.start}"></td><td><input type="time" data-f="end" value="${s.end}"></td><td class="n">${fmtHM(shiftLen(s))}</td><td><button class="b d sm" data-del="${s.id}">Remove</button></td></tr>`;
+  $('sTbl').innerHTML=h+'</tbody>';
+}
+$('sTbl').addEventListener('change',e=>{ const tr=e.target.closest('tr'), s=DB.shifts.find(x=>x.id===tr.dataset.id); if(!s||!e.target.value) return; s[e.target.dataset.f]=e.target.value; save(); renderShifts(); toast('Shift updated'); });
+$('sTbl').addEventListener('click',e=>{ const id=e.target.dataset.del; if(!id) return;
+  const used=Object.values(DB.att).some(a=>Object.values(a.rows).some(r=>r.shift===id))||DB.employees.some(x=>x.shift===id);
+  if(used){ alert('This shift is used in attendance or as a default shift. Rename or edit it instead of removing.'); return; }
+  if(DB.shifts.length<2){ alert('Keep at least one shift.'); return; }
+  DB.shifts=DB.shifts.filter(s=>s.id!==id); save(); renderShifts(); });
+$('sAdd').onclick=()=>{ DB.shifts.push({id:'s'+Date.now(),name:'New shift',start:'09:00',end:'18:00'}); save(); renderShifts(); };
+
+/* =====================  SETTINGS / BACKUP  ===================== */
+const SETMAP={stCo:'company',stDiv:'divisor',stOt:'otMult',stOtMin:'otMin',stWo:'woMult',stPh:'phMult',stPWO:'paidWO',stPPH:'paidPH',stPCO:'paidCO'};
+function renderSettings(){
+  for(const [id,k] of Object.entries(SETMAP)){ const el=$(id); if(el.type==='checkbox') el.checked=!!DB.settings[k]; else el.value=DB.settings[k]; }
+  $('bkLast').textContent=DB.lastBackup?'Last backup: '+new Date(DB.lastBackup).toLocaleString('en-IN'):'No backup downloaded yet.';
+}
+for(const [id,k] of Object.entries(SETMAP)) $(id).addEventListener('change',e=>{
+  const el=e.target; DB.settings[k]= el.type==='checkbox'?el.checked : (el.type==='number'?Math.max(0,+el.value||0):el.value);
+  save(); applyCo(); toast('Setting saved'); });
+function applyCo(){ $('coName').textContent=(DB.settings.company?DB.settings.company+' — ':'')+'Attendance & Payroll'; document.title=$('coName').textContent; }
+$('bkDown').onclick=()=>{
+  DB.lastBackup=Date.now(); save();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(DB,null,1)],{type:'application/json'}));
+  a.download=`Payroll_Backup_${localISO(new Date())}.json`; a.click(); renderSettings(); checkBackup(); toast('Backup downloaded');
+};
+$('bkUp').onclick=()=>$('bkFile').click();
+$('bkFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.employees||!d.att||!d.shifts) throw new Error('Not a payroll backup file');
+      if(!confirm(`Replace ALL current data with this backup?\n\n${d.employees.length} employees, ${Object.keys(d.att).length} days of attendance.`)) return;
+      DB=d; DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.deductions=DB.deductions||{}; save(); location.reload(); }
+    catch(err){ alert('Could not restore: '+err.message); } };
+  r.readAsText(f); e.target.value=''; };
+$('bkReset').onclick=()=>{ if(prompt('This deletes all employees and attendance on this computer. Type ERASE to confirm.')!=='ERASE') return;
+  localStorage.removeItem(KEY); location.reload(); };
+function checkBackup(){
+  const days=Object.keys(DB.att).length, age=DB.lastBackup?(Date.now()-DB.lastBackup)/864e5:Infinity;
+  const show=days>0 && age>7;
+  $('backupWarn').innerHTML= show? `${DB.lastBackup?'Last backup was '+Math.floor(age)+' days ago.':'You have not downloaded a backup yet.'} <button class="b sm" onclick="document.querySelector('#nav [data-t=settings]').click()">Back up now</button>` : '';
+  $('backupWarn').classList.toggle('hidden',!show);
+}
+
+/* ---------- start ---------- */
+load(); applyCo(); checkBackup(); openDay(localISO(new Date()));
+</script>
+</body>
+</html>

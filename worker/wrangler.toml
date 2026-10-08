@@ -9,6 +9,6 @@ routes = [{ pattern = "api.pskservices.co.in", custom_domain = true }]
 # then paste the printed id below.
 [[kv_namespaces]]
 binding = "DEMO_KV"
-id = "REPLACE_WITH_KV_ID"
+id = "6edfb8c36dc441a7815c7074ae029b5b"
 
 # Secrets (set with `npx wrangler secret put <NAME>`): ADMIN_USER, ADMIN_PASS, SESSION_SECRET
