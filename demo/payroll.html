@@ -179,9 +179,9 @@ input.ded{width:100px;text-align:right}
   </div>
   <div class="card">
     <h2>Public holidays</h2>
-    <p class="hint" style="margin-top:0">Declare holidays here, including future ones. On these dates everyone defaults to "Public holiday" in Daily Attendance, anyone who comes in is paid at the holiday work rate, and unmarked active employees are paid the holiday automatically.</p>
+    <p class="hint" style="margin-top:0">Declare holidays here, including future ones, and choose the type. <b>National</b> and <b>Public</b> holidays are paid, and anyone who works is paid at the holiday work rate (double by default). <b>Optional</b> holidays are just listed: they stay normal working days unless you mark someone as on holiday. On National/Public dates everyone defaults to "Public holiday" in Daily Attendance, anyone who comes in is paid at the holiday work rate, and unmarked active employees are paid the holiday automatically.</p>
     <div class="row">
-      <input type="date" id="hDate"><input id="hName" placeholder="Holiday name (e.g. Diwali)" style="min-width:220px">
+      <input type="date" id="hDate"><select id="hType"><option>National</option><option selected>Public</option><option>Optional</option></select><input id="hName" placeholder="Holiday name (e.g. Diwali)" style="min-width:220px">
       <button class="b" id="hAdd">Add holiday</button>
       <span class="sp"></span><label class="hint"><input type="checkbox" id="hPast"> Show past holidays</label>
     </div>
@@ -217,6 +217,8 @@ const STATUSES=[
   {k:'CO',label:'Comp-off',             times:false},
 ];
 const ST=Object.fromEntries(STATUSES.map(s=>[s.k,s]));
+/* National / Public holidays are observed (paid; double pay if worked). Optional holidays are informational: a normal working day unless marked otherwise. */
+const holObserved=h=>(h.type||'Public')!=='Optional';
 const toMin=t=>{ if(!t) return null; const m=String(t).match(/^(\d{1,2}):(\d{2})/); return m? (+m[1]*60+ +m[2])%1440 : null; };
 const fmtHM=m=>{ if(m==null||isNaN(m)) return ''; m=Math.round(m); return Math.floor(m/60)+':'+String(m%60).padStart(2,'0'); };
 const shiftLen=sh=>{ const s=toMin(sh.start), e=toMin(sh.end); return s==null||e==null?null:((e-s+1440)%1440)||1440; };
@@ -254,7 +256,7 @@ function monthPayroll(db, ym){
   const divisor = set.divisor==='month'? nDays : +set.divisor;
   const shiftById=Object.fromEntries(db.shifts.map(s=>[s.id,s]));
   const today=localISO(new Date());
-  const holMap=Object.fromEntries((db.holidays||[]).map(h=>[h.date,h.name]));
+  const holMap=Object.fromEntries((db.holidays||[]).filter(holObserved).map(h=>[h.date,h.name]));
   const out=[];
   for(const e of db.employees){
     const o={emp:e, P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0, notMarked:0, notJoined:0,
@@ -384,6 +386,7 @@ window.addEventListener('beforeunload',e=>{ if(DIRTY){ e.preventDefault(); e.ret
 /* =====================  DAILY  ===================== */
 let CUR=null, WORK={}, DIRTY=false;
 const HOL=date=>(DB.holidays||[]).find(h=>h.date===date);
+const HOLO=date=>{ const h=HOL(date); return h&&holObserved(h)?h:null; };
 function lastShiftFor(empId, before){
   const dates=Object.keys(DB.att).filter(d=>d<before && DB.att[d].submitted && DB.att[d].rows[empId]?.shift).sort();
   return dates.length? DB.att[dates[dates.length-1]].rows[empId].shift : null;
@@ -400,14 +403,14 @@ function openDay(date){
     if(saved[e.id]) { WORK[e.id]={...saved[e.id]}; continue; }
     const shift=lastShiftFor(e.id,date)||e.shift||DB.shifts[0]?.id;
     const sh=DB.shifts.find(s=>s.id===shift);
-    const status= HOL(date)?'PH' : (e.weekOff!==''&&e.weekOff!=null&&+e.weekOff===wd)?'WO':'P';
+    const status= HOLO(date)?'PH' : (e.weekOff!==''&&e.weekOff!=null&&+e.weekOff===wd)?'WO':'P';
     WORK[e.id]={shift,status,in:status==='P'&&sh?sh.start:'',out:status==='P'&&sh?sh.end:''};
   }
   renderDaily();
 }
 function renderDaily(){
   $('dDate').value=CUR;
-  $('dDay').textContent=DOW[dateObj(CUR).getDay()]+(HOL(CUR)?' — Public holiday: '+HOL(CUR).name:'');
+  $('dDay').textContent=DOW[dateObj(CUR).getDay()]+(HOL(CUR)?' — '+(HOL(CUR).type||'Public')+' holiday: '+HOL(CUR).name+(holObserved(HOL(CUR))?'':' (optional — normal working day unless marked)'):'');
   const a=DB.att[CUR];
   $('dBadge').innerHTML= a?.submitted ? `<span class="badge b-ok">Submitted ${new Date(a.submitted).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</span>` : `<span class="badge b-warn">Not submitted</span>`;
   $('dDirty').classList.toggle('hidden',!DIRTY);
@@ -442,7 +445,7 @@ $('dTbl').addEventListener('change',e=>{
     if(ST[el.value].times){ if(!w.in&&sh) w.in=sh.start; if(!w.out&&sh) w.out=sh.end; } else { w.in=''; w.out=''; }
   }
   if(f==='eot') w.eot=el.checked; else w[f]=el.value;
-  if((f==='in'||f==='out')&&el.value&&HOL(CUR)&&(w.status==='PH'||w.status==='P'||w.status==='WW')) w.status='PW';   // came in on a holiday
+  if((f==='in'||f==='out')&&el.value&&HOLO(CUR)&&(w.status==='PH'||w.status==='P'||w.status==='WW')) w.status='PW';   // came in on a holiday
   if(f==='status'&&el.value!=='P'&&el.value!=='WW') w.eot=false;
   DIRTY=true; renderDaily();
 });
@@ -456,7 +459,7 @@ $('dSubmit').onclick=()=>{
   for(const id in WORK){ const w=WORK[id], c=dayCalc(w,DB.shifts.find(s=>s.id===w.shift),DB.settings); if(c.err) probs.push(id+': '+c.err); }
   if(probs.some(p=>/missing|No shift/.test(p))){ alert('Please fix before submitting:\n\n'+probs.join('\n')); return; }
   if(probs.length && !confirm('Please check:\n\n'+probs.join('\n')+'\n\nSubmit anyway?')) return;
-  if(HOL(CUR)) for(const id in WORK){ const w=WORK[id]; if((w.status==='P'||w.status==='WW')&&(w.in||w.out)) w.status='PW'; }
+  if(HOLO(CUR)) for(const id in WORK){ const w=WORK[id]; if((w.status==='P'||w.status==='WW')&&(w.in||w.out)) w.status='PW'; }
   const was=!!DB.att[CUR]?.submitted;
   DB.att[CUR]={submitted:Date.now(),rows:JSON.parse(JSON.stringify(WORK))};
   save(); DIRTY=false; renderDaily(); checkBackup();
@@ -469,7 +472,7 @@ function renderRegister(){
   const ym=$('rMonth').value, P=monthPayroll(DB,ym), n=P.nDays, today=localISO(new Date());
   let h='<thead><tr><th class="l">Crew</th>';
   for(let d=1;d<=n;d++){ const ds=ym+'-'+String(d).padStart(2,'0'), wd=dateObj(ds).getDay(), sub=DB.att[ds]?.submitted;
-    h+=`<th class="dh ${!sub&&ds<=today?'ns':''} ${wd===0?'sun':''}" data-d="${ds}" title="${prettyDate(ds)}${HOL(ds)?' — '+esc(HOL(ds).name):''}${sub?'':' — not submitted'}">${d}<br><span class="hint">${DOW[wd][0]}</span></th>`; }
+    h+=`<th class="dh ${!sub&&ds<=today?'ns':''} ${wd===0?'sun':''}" data-d="${ds}" title="${prettyDate(ds)}${HOL(ds)?' — '+esc(HOL(ds).name)+' ('+(HOL(ds).type||'Public')+')':''}${sub?'':' — not submitted'}">${d}<br><span class="hint">${DOW[wd][0]}</span></th>`; }
   h+='<th>P</th><th>A</th><th>OT</th></tr></thead><tbody>';
   for(const o of P.rows){
     h+=`<tr><td class="l"><b>${esc(o.emp.id)}</b> ${esc(o.emp.name)}</td>`;
@@ -745,7 +748,7 @@ $('aFile').onchange=e=>{
     const counts={P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0};
     const dataRows=rows.slice(hi+1).filter(rw=>String(rw[idCol]).trim() && !/^(in|out)$/i.test(String(rw[idCol]).trim()));
     /* dates on which the sheet marks a public holiday (so people who worked that day become "worked on holiday") */
-    const phDates=new Set((DB.holidays||[]).map(h=>h.date)), declared=new Set(phDates);   // declared holidays + dates the sheet itself marks PH
+    const phDates=new Set((DB.holidays||[]).filter(holObserved).map(h=>h.date)), declared=new Set(phDates);   // declared holidays + dates the sheet itself marks PH
     for(const rw of dataRows) for(const dc of dateCols) if(IMP_STATUS[norm(rw[dc.col])]==='PH') phDates.add(dc.date);
     for(const rw of dataRows){
       const id=String(rw[idCol]).trim(), emp=emap[id.toLowerCase()];
@@ -841,15 +844,15 @@ const SETMAP={stCo:'company',stDiv:'divisor',stOt:'otMult',stOtMin:'otMin',stWo:
 function renderHolidays(){
   const today=localISO(new Date()), showPast=$('hPast').checked;
   const list=[...DB.holidays].sort((a,b)=>a.date.localeCompare(b.date)).filter(h=>showPast||h.date>=today);
-  $('hTbl').innerHTML='<thead><tr><th>Date</th><th>Day</th><th>Holiday</th><th></th></tr></thead><tbody>'+
-    (list.length?list.map(h=>`<tr class="${h.date<today?'dim':''}"><td>${prettyDate(h.date)}</td><td>${DOW[dateObj(h.date).getDay()]}</td><td>${esc(h.name)}</td><td><button class="b d sm" data-hd="${h.date}">Remove</button></td></tr>`).join(''):'<tr><td colspan="4" class="hint">No upcoming holidays declared.</td></tr>')+'</tbody>';
+  $('hTbl').innerHTML='<thead><tr><th>Date</th><th>Day</th><th>Type</th><th>Holiday</th><th></th></tr></thead><tbody>'+
+    (list.length?list.map(h=>`<tr class="${h.date<today?'dim':''}"><td>${prettyDate(h.date)}</td><td>${DOW[dateObj(h.date).getDay()]}</td><td>${esc(h.type||'Public')}</td><td>${esc(h.name)}</td><td><button class="b d sm" data-hd="${h.date}">Remove</button></td></tr>`).join(''):'<tr><td colspan="5" class="hint">No upcoming holidays declared.</td></tr>')+'</tbody>';
 }
 $('hPast').onchange=renderHolidays;
 $('hAdd').onclick=()=>{
   const date=$('hDate').value, name=$('hName').value.trim();
   if(!date||!name){ alert('Enter the date and the holiday name.'); return; }
   if(DB.holidays.some(h=>h.date===date)){ alert('A holiday is already declared on that date.'); return; }
-  DB.holidays.push({date,name}); save(); $('hDate').value=''; $('hName').value=''; renderHolidays(); toast('Holiday added');
+  DB.holidays.push({date,name,type:$('hType').value}); save(); $('hDate').value=''; $('hName').value=''; renderHolidays(); toast('Holiday added');
 };
 $('hTbl').onclick=e=>{ const b=e.target.closest('[data-hd]'); if(!b) return;
   const h=DB.holidays.find(x=>x.date===b.dataset.hd);
