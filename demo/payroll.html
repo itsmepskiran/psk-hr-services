@@ -422,8 +422,8 @@ function renderDaily(){
   const emps=empsForDate(CUR);
   const shiftOpts=id=>DB.shifts.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${esc(shiftLabel(s))}</option>`).join('');
   const stOpts=k=>STATUSES.map(s=>`<option value="${s.k}" ${s.k===k?'selected':''}>${s.label}</option>`).join('');
-  let h=`<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th>Assigned Shift</th><th>Status</th><th>In</th><th>Out</th><th title="Tick if time outside the shift (before start / after end) is approved as overtime for this day">OT approved</th><th class="n">Hours</th><th class="n">OT</th><th>Check</th></tr></thead><tbody>`;
-  if(!emps.length) h+=`<tr><td colspan="11" class="hint">No active employees for this date. Add them in the Employees tab.</td></tr>`;
+  let h=`<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th>Assigned Shift</th><th>Status</th><th>In</th><th>Out</th><th title="Tick if time outside the shift (before start / after end) is approved as overtime for this day">OT approved</th><th class="n">Hours</th><th class="n">OT</th><th>Check</th><th>Remarks</th></tr></thead><tbody>`;
+  if(!emps.length) h+=`<tr><td colspan="12" class="hint">No active employees for this date. Add them in the Employees tab.</td></tr>`;
   for(const e of emps){
     const w=WORK[e.id]; if(!w) continue;
     const sh=DB.shifts.find(s=>s.id===w.shift), c=dayCalc(w,sh,DB.settings), t=ST[w.status].times;
@@ -434,7 +434,8 @@ function renderDaily(){
       <td><input type="time" data-f="out" value="${w.out||''}" ${t?'':'disabled'}></td>
       <td style="text-align:center"><input type="checkbox" data-f="eot" ${w.eot?'checked':''} ${w.status==='P'||w.status==='WW'?'':'disabled'}></td>
       <td class="n">${t?fmtHM(c.worked):''}</td><td class="n">${c.ot?'<b>'+fmtHM(c.ot)+'</b>':''}</td>
-      <td class="hint" style="color:var(--bad)">${esc(c.err)}</td></tr>`;
+      <td class="hint" style="color:var(--bad)">${esc(c.err)}</td>
+      <td><input type="text" data-f="note" value="${esc(w.note||'')}" placeholder="Add note" maxlength="200" style="min-width:150px"></td></tr>`;
   }
   $('dTbl').innerHTML=h+'</tbody>';
 }
@@ -483,8 +484,8 @@ function renderRegister(){
   for(const o of P.rows){
     h+=`<tr><td class="l"><b>${esc(o.emp.id)}</b> ${esc(o.emp.name)}</td>`;
     for(const d of o.days){
-      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}${d.calc.short?' · short '+fmtHM(d.calc.short):''}${d.rec.eot?' · OT approved':''}${d.wwCancelled?' · worked on week-off, paid as normal day (absent in previous 7 days)':''}`:'';
-      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.wwCancelled?'*':''}${d.calc?.ot?'<sup>+</sup>':''}</td>`;
+      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}${d.calc.short?' · short '+fmtHM(d.calc.short):''}${d.rec.eot?' · OT approved':''}${d.rec.note?' · Note: '+d.rec.note:''}${d.wwCancelled?' · worked on week-off, paid as normal day (absent in previous 7 days)':''}`:'';
+      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.wwCancelled?'*':''}${d.calc?.ot?'<sup>+</sup>':''}${d.rec?.note?'<sup>✎</sup>':''}</td>`;
     }
     h+=`<td>${o.P+o.HD*0.5}</td><td>${o.A}</td><td>${fmtHM(o.ot)}</td></tr>`;
   }
@@ -567,6 +568,8 @@ $('pHrs').onclick=()=>{
   const wb=XLSX.utils.book_new();
   const add=(rows,name,wide)=>{ const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=rows[0].map((_,i)=>({wch:i===1?22:i===2?16:wide})); XLSX.utils.book_append_sheet(wb,ws,name); };
   add(daily,'Daily Login Hours',8); add(wk,'Weekly Login Hours',18); add(mon,'Monthly Summary',16);
+  const notes=[['Date','Crew ID','Name','Remark']]; for(const o of P.rows) for(const x of o.days) if(x.rec?.note) notes.push([prettyDate(x.date),o.emp.id,o.emp.name,x.rec.note]);
+  if(notes.length>1){ const ws=XLSX.utils.aoa_to_sheet(notes); ws['!cols']=[{wch:13},{wch:10},{wch:22},{wch:60}]; XLSX.utils.book_append_sheet(wb,ws,'Remarks'); }
   XLSX.writeFile(wb,`Login_Hours_${ym}.xlsx`);
 };
 $('pXls').onclick=()=>{
@@ -796,7 +799,7 @@ $('aFile').onchange=e=>{
     $('modal').classList.remove('hidden'); $('aCancel').onclick=closeModal;
     $('aGo').onclick=()=>{
       const ap=$('aApprove').checked;
-      for(const x of recs){ if(ap&&x.rec.status==='P') x.rec.eot=true; const a=DB.att[x.date]=DB.att[x.date]||{submitted:0,rows:{}}; a.rows[x.id]=x.rec; a.submitted=a.submitted||Date.now(); }
+      for(const x of recs){ if(ap&&x.rec.status==='P') x.rec.eot=true; const a=DB.att[x.date]=DB.att[x.date]||{submitted:0,rows:{}}; const old=a.rows[x.id]; if(old?.note) x.rec.note=old.note; a.rows[x.id]=x.rec; a.submitted=a.submitted||Date.now(); }
       save(); closeModal(); DIRTY=false; if(CUR) openDay(CUR); renderRegister(); toast(`Imported ${recs.length} attendance records`);
     };
   };
