@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>PSK Services | Demo Login</title>
+<link rel="icon" href="../hr-services/assets/logo.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6f9;font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;color:#1c2430}
+form{background:#fff;border:1px solid #e2e6ed;border-radius:12px;padding:28px;width:min(360px,92vw);box-shadow:0 6px 24px rgba(0,0,0,.06)}
+img{height:40px;display:block;margin-bottom:12px}
+h1{font-size:18px;margin:0 0 4px}
+p{margin:0 0 18px;color:#667085;font-size:13px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:12px}
+input{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid #e2e6ed;border-radius:8px;font:inherit}
+button{width:100%;padding:11px;border:0;border-radius:8px;background:#1f5fbf;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+#err{color:#b42318;font-size:13px;min-height:18px;margin:0 0 10px}
+</style>
+</head>
+<body>
+<form id="f">
+  <img src="../hr-services/assets/logo.svg" alt="PSK Services">
+  <h1>Payroll Demo</h1>
+  <p>Sign in to open the Crew Attendance &amp; Payroll app.</p>
+  <label>Username<input id="u" autocomplete="username" autofocus required></label>
+  <label>Password<input id="p" type="password" autocomplete="current-password" required></label>
+  <div id="err"></div>
+  <button type="submit">Sign in</button>
+</form>
+<script>
+document.getElementById('f').addEventListener('submit',function(e){
+  e.preventDefault();
+  if(u.value==='admin'&&p.value==='admin'){
+    try{sessionStorage.setItem('psk_demo_auth','1');}catch(x){}
+    location.href='payroll.html';
+  }else{
+    document.getElementById('err').textContent='Invalid username or password.';
+  }
+});
+</script>
+</body>
+</html>
