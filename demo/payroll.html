@@ -123,13 +123,14 @@ input.ded{width:100px;text-align:right}
       <input type="search" id="pQ" placeholder="Search name / ID">
       <span class="sp"></span>
       <button class="b s" id="pSlips">Print payslips</button>
+      <button class="b s" id="pHrs">Export login hours</button>
       <button class="b" id="pXls">Export to Excel</button>
     </div>
   </div>
   <div id="pWarn" class="warnbox hidden"></div>
   <div class="stats" id="pStats"></div>
   <div class="card"><div class="tw"><table id="pTbl"></table></div>
-  <div class="hint" style="margin-top:8px">Per day = Salary ÷ <span id="pDiv"></span>. Hourly = per day ÷ that day's shift hours. OT = time worked before shift start + after shift end. Week-off / holiday work = hours × hourly × multiplier. No statutory deductions. Type advances or other deductions directly in the Deductions column — saved automatically.</div></div>
+  <div class="hint" style="margin-top:8px">Per day = Salary ÷ <span id="pDiv"></span>. Hourly = per day ÷ that day's shift hours. OT = time outside the shift (before start / after end) on days where OT is approved; late arrival / early leaving is deducted. Week-off / holiday work = hours × hourly × multiplier. No statutory deductions. Type advances or other deductions directly in the Deductions column — saved automatically.</div></div>
 </section>
 
 <!-- EMPLOYEES -->
@@ -510,6 +511,39 @@ $('pMonth').onchange=renderPayroll; $('pQ').oninput=renderPayroll;
 $('pTbl').addEventListener('change',e=>{ const el=e.target; if(!el.classList.contains('ded')) return;
   const ym=$('pMonth').value; DB.deductions[ym]=DB.deductions[ym]||{}; DB.deductions[ym][el.dataset.id]=Math.max(0,+el.value||0); save(); renderPayroll(); });
 
+
+/* ---------- login-hours export: daily, weekly (Mon–Sun) and monthly totals per employee ---------- */
+$('pHrs').onclick=()=>{
+  if(!window.XLSX){ alert('Excel export needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
+  const ym=$('pMonth').value; if(!ym) return;
+  const P=monthPayroll(DB,ym), r2=v=>Math.round(v*100)/100, MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+ym.slice(5)-1];
+  const nDays=P.nDays, dayHdr=[], weekOf=[], weeks=[];
+  for(let d=1;d<=nDays;d++){
+    const ds=ym+'-'+String(d).padStart(2,'0'), dow=(dateObj(ds).getDay()+6)%7;   // Monday = 0
+    dayHdr.push(String(d).padStart(2,'0')+' '+DOW[dateObj(ds).getDay()].slice(0,3));
+    if(d===1||dow===0) weeks.push({from:d,to:d}); else weeks[weeks.length-1].to=d;
+    weekOf.push(weeks.length-1);
+  }
+  const weekHdr=weeks.map((w,i)=>`Week ${i+1} (${String(w.from).padStart(2,'0')}–${String(w.to).padStart(2,'0')} ${MON})`);
+  const daily=[['Crew ID','Name','Role',...dayHdr,'Month total (hrs)']], wk=[['Crew ID','Name','Role',...weekHdr,'Month total (hrs)']],
+        mon=[['Crew ID','Name','Role','Days worked','Total login hours','Avg hours / day worked','Approved OT hours','Short hours','Absent days']];
+  for(const o of P.rows){
+    const hrs=new Array(nDays).fill(0), cells=[];
+    o.days.forEach((x,i)=>{
+      const m=x.calc?.worked||0; hrs[i]=m/60;
+      cells.push(x.code==='NM'||x.code==='NJ'?'' : m? r2(m/60) : x.code);   // hours for worked days, status code (A, WO, PH, CO) otherwise
+    });
+    const tot=hrs.reduce((a,b)=>a+b,0), wsum=weeks.map(()=>0); hrs.forEach((h,i)=>wsum[weekOf[i]]+=h);
+    const worked=hrs.filter(h=>h>0).length, base=[o.emp.id,o.emp.name,o.emp.role];
+    daily.push([...base,...cells,r2(tot)]);
+    wk.push([...base,...wsum.map(r2),r2(tot)]);
+    mon.push([...base,worked,r2(tot),worked?r2(tot/worked):0,r2(o.ot/60),r2(o.short/60),o.A]);
+  }
+  const wb=XLSX.utils.book_new();
+  const add=(rows,name,wide)=>{ const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=rows[0].map((_,i)=>({wch:i===1?22:i===2?16:wide})); XLSX.utils.book_append_sheet(wb,ws,name); };
+  add(daily,'Daily Login Hours',8); add(wk,'Weekly Login Hours',18); add(mon,'Monthly Summary',16);
+  XLSX.writeFile(wb,`Login_Hours_${ym}.xlsx`);
+};
 $('pXls').onclick=()=>{
   if(!PAY) return; if(!window.XLSX){ alert('Excel export needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
   const ym=$('pMonth').value, wb=XLSX.utils.book_new(), r2=v=>Math.round((+v||0)*100)/100;
