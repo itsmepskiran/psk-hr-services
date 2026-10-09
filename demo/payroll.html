@@ -125,8 +125,10 @@ input.ded{width:100px;text-align:right}
       <button class="b s" id="pSlips">Print payslips</button>
       <button class="b s" id="pHrs">Export login hours</button>
       <button class="b" id="pXls">Export to Excel</button>
+      <button class="b d" id="pLock">Lock and Proceed to Payroll</button>
     </div>
   </div>
+  <div id="pLockBar" class="warnbox hidden"></div>
   <div id="pWarn" class="warnbox hidden"></div>
   <div class="stats" id="pStats"></div>
   <div class="card"><div class="tw"><table id="pTbl"></table></div>
@@ -346,7 +348,7 @@ async function load(){
   if(r.status===401){ toLogin(); throw new Error('login required'); }
   const j=await r.json(); REV=j.rev; DB=j.data;
   if(!DB){ DB={version:1,employees:SEED_EMPS,shifts:SEED_SHIFTS,att:{},deductions:{},settings:{...DEFAULT_SETTINGS},lastBackup:null}; save(); }
-  DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.holidays=DB.holidays||[];
+  DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.holidays=DB.holidays||[]; DB.locks=DB.locks||{}; DB.lockLog=DB.lockLog||[];
 }
 function save(){
   /* Saves are queued so they reach the server in order; REV guards against overwriting someone else's changes. */
@@ -390,6 +392,11 @@ window.addEventListener('beforeunload',e=>{ if(DIRTY){ e.preventDefault(); e.ret
 /* =====================  DAILY  ===================== */
 let CUR=null, WORK={}, DIRTY=false;
 const HOL=date=>(DB.holidays||[]).find(h=>h.date===date);
+/* ---- month locking: a locked month is read-only and its payroll runs on a frozen snapshot ---- */
+const lockOf=ym=>(DB.locks||{})[ym]||null;
+const isLockedDate=date=>!!lockOf(date.slice(0,7));
+const payDB=ym=>{ const L=lockOf(ym); return L? {...L.snap,deductions:DB.deductions} : DB; };   // deductions stay editable after locking
+const payrollFor=ym=>monthPayroll(payDB(ym),ym);
 const HOLO=date=>HOL(date)||null;                                   // any declared holiday (paid day off)
 const HOLW=date=>{ const h=HOL(date); return h&&holWorkable(h)?h:null; };   // National/Public: double pay if worked
 function lastShiftFor(empId, before){
@@ -438,8 +445,12 @@ function renderDaily(){
       <td><input type="text" data-f="note" value="${esc(w.note||'')}" placeholder="Add note" maxlength="200" style="min-width:150px"></td></tr>`;
   }
   $('dTbl').innerHTML=h+'</tbody>';
+  const lk=isLockedDate(CUR);
+  for(const id of ['dSubmit','dAllP','dFill']) $(id).disabled=lk;
+  if(lk){ $('dTbl').querySelectorAll('input,select').forEach(x=>x.disabled=true); $('dBadge').innerHTML+=' <span class="badge b-warn">🔒 Month locked — read only</span>'; }
 }
 $('dTbl').addEventListener('change',e=>{
+  if(isLockedDate(CUR)) return;
   const el=e.target, tr=el.closest('tr'); if(!tr||!el.dataset.f) return;
   const w=WORK[tr.dataset.id], f=el.dataset.f;
   if(f==='shift'){
@@ -458,9 +469,10 @@ $('dTbl').addEventListener('change',e=>{
 $('dDate').onchange=e=>{ if(e.target.value) openDay(e.target.value); };
 $('dPrev').onclick=()=>openDay(addDays(CUR,-1));
 $('dNext').onclick=()=>openDay(addDays(CUR,1));
-$('dAllP').onclick=()=>{ for(const id in WORK){ const w=WORK[id]; if(w.status!=='P'){ const sh=DB.shifts.find(s=>s.id===w.shift); w.status='P'; w.in=w.in||sh?.start||''; w.out=w.out||sh?.end||''; } } DIRTY=true; renderDaily(); };
-$('dFill').onclick=()=>{ for(const id in WORK){ const w=WORK[id], sh=DB.shifts.find(s=>s.id===w.shift); if(ST[w.status].times&&sh){ w.in=w.in||sh.start; w.out=w.out||sh.end; } } DIRTY=true; renderDaily(); };
+$('dAllP').onclick=()=>{ if(isLockedDate(CUR)) return; for(const id in WORK){ const w=WORK[id]; if(w.status!=='P'){ const sh=DB.shifts.find(s=>s.id===w.shift); w.status='P'; w.in=w.in||sh?.start||''; w.out=w.out||sh?.end||''; } } DIRTY=true; renderDaily(); };
+$('dFill').onclick=()=>{ if(isLockedDate(CUR)) return; for(const id in WORK){ const w=WORK[id], sh=DB.shifts.find(s=>s.id===w.shift); if(ST[w.status].times&&sh){ w.in=w.in||sh.start; w.out=w.out||sh.end; } } DIRTY=true; renderDaily(); };
 $('dSubmit').onclick=()=>{
+  if(isLockedDate(CUR)){ alert('This month is locked. Attendance cannot be changed.'); return; }
   const probs=[];
   for(const id in WORK){ const w=WORK[id], c=dayCalc(w,DB.shifts.find(s=>s.id===w.shift),DB.settings); if(c.err) probs.push(id+': '+c.err); }
   if(probs.some(p=>/missing|No shift/.test(p))){ alert('Please fix before submitting:\n\n'+probs.join('\n')); return; }
@@ -476,7 +488,7 @@ $('dSubmit').onclick=()=>{
 /* =====================  REGISTER  ===================== */
 function renderRegister(){
   if(!$('rMonth').value) $('rMonth').value=CUR?CUR.slice(0,7):localISO(new Date()).slice(0,7);
-  const ym=$('rMonth').value, P=monthPayroll(DB,ym), n=P.nDays, today=localISO(new Date());
+  const ym=$('rMonth').value, P=payrollFor(ym), n=P.nDays, today=localISO(new Date());
   let h='<thead><tr><th class="l">Crew</th>';
   for(let d=1;d<=n;d++){ const ds=ym+'-'+String(d).padStart(2,'0'), wd=dateObj(ds).getDay(), sub=DB.att[ds]?.submitted;
     h+=`<th class="dh ${!sub&&ds<=today?'ns':''} ${wd===0?'sun':''}" data-d="${ds}" title="${prettyDate(ds)}${HOL(ds)?' — '+esc(HOL(ds).name)+' ('+(HOL(ds).type||'Public')+')':''}${sub?'':' — not submitted'}">${d}<br><span class="hint">${DOW[wd][0]}</span></th>`; }
@@ -509,7 +521,7 @@ const PCOLS=[
 ];
 function renderPayroll(){
   if(!$('pMonth').value) $('pMonth').value=CUR?CUR.slice(0,7):localISO(new Date()).slice(0,7);
-  const ym=$('pMonth').value; PAY=monthPayroll(DB,ym);
+  const ym=$('pMonth').value; PAY=payrollFor(ym);
   $('pDiv').textContent=PAY.divisor+(DB.settings.divisor==='month'?' (days in this month)':'');
   const q=$('pQ').value.toLowerCase();
   const rows=PAY.rows.filter(o=>!q||o.emp.id.toLowerCase().includes(q)||o.emp.name.toLowerCase().includes(q));
@@ -518,6 +530,10 @@ function renderPayroll(){
   const unsub=[]; for(let d=1;d<=PAY.nDays;d++){ const ds=ym+'-'+String(d).padStart(2,'0'); if(ds<=localISO(new Date())&&!DB.att[ds]?.submitted) unsub.push(d); }
   if(unsub.length) msgs.push(`Attendance not submitted for ${unsub.length} day(s): ${unsub.join(', ')}. Those days are unpaid until submitted.`);
   if(errs.length) msgs.push('Check times for: '+errs.map(o=>o.emp.id+' ('+o.errs.join('; ')+')').join(' · '));
+  const LK=lockOf(ym);
+  $('pLock').classList.toggle('hidden',!!LK);
+  $('pLockBar').classList.toggle('hidden',!LK);
+  if(LK) $('pLockBar').innerHTML=`<b>🔒 ${dateObj(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'})} is locked</b> (${new Date(LK.at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}). Attendance, salaries, shifts, holidays and pay rules are frozen for this month. Only the Deductions column can still be edited. <button class="b s sm" id="pUnlock" style="margin-left:8px">Unlock</button>`;
   $('pWarn').innerHTML=msgs.join('<br>'); $('pWarn').classList.toggle('hidden',!msgs.length);
   const sum=f=>rows.reduce((a,o)=>a+(+f(o)||0),0);
   $('pStats').innerHTML=[['Employees',rows.length],['Base pay','₹'+money(sum(o=>o.base))],['OT pay','₹'+money(sum(o=>o.otPay))],['Week-off + holiday pay','₹'+money(sum(o=>o.woPay+o.phPay))],['Deductions','₹'+money(sum(o=>o.ded))],['Net payable','₹'+money(sum(o=>o.net))]]
@@ -533,6 +549,26 @@ function renderPayroll(){
     if(c[2]==='h') return `<td class="n">${fmtHM(sum(c[1]))}</td>`; return '<td></td>'; }).join('')+'</tr>';
   $('pTbl').innerHTML=h+'</tbody>';
 }
+$('pLock').onclick=()=>{
+  const ym=$('pMonth').value; if(!ym||lockOf(ym)) return; renderPayroll();
+  const mName=dateObj(ym+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}), today=localISO(new Date());
+  const probs=[];
+  if(today<=ym+'-'+String(PAY.nDays).padStart(2,'0')) probs.push('The month is not over yet.');
+  const unsub=[]; for(let d=1;d<=PAY.nDays;d++){ const ds=ym+'-'+String(d).padStart(2,'0'); if(ds<=today&&!DB.att[ds]?.submitted) unsub.push(d); }
+  if(unsub.length) probs.push(`Attendance not submitted for ${unsub.length} day(s): ${unsub.join(', ')}.`);
+  const errs=PAY.rows.filter(o=>o.errs.length); if(errs.length) probs.push('Time problems for: '+errs.map(o=>o.emp.id).join(', ')+'.');
+  if(!confirm(`Lock ${mName}?\n\nAttendance for the whole month becomes read-only and cannot be changed or re-imported. Salaries, shifts, holidays and pay rules are frozen as they are now. Only deductions can still be edited.`+(probs.length?'\n\nBefore you lock, please note:\n• '+probs.join('\n• '):''))) return;
+  if(probs.length && !confirm('There are open points listed above. Lock anyway?')) return;
+  const from=localISO(new Date(+ym.slice(0,4),+ym.slice(5)-1,1-7)), to=ym+'-'+String(PAY.nDays).padStart(2,'0');   // 7 days before the month are kept for the week-off rule
+  const att={}; for(const d in DB.att) if(d>=from&&d<=to) att[d]=DB.att[d];
+  DB.locks[ym]={at:Date.now(),snap:JSON.parse(JSON.stringify({employees:DB.employees,shifts:DB.shifts,settings:DB.settings,holidays:DB.holidays,att}))};
+  DB.lockLog.push({ym,action:'lock',at:Date.now()});
+  save(); renderPayroll(); toast(mName+' locked — proceed with payroll');
+};
+$('pLockBar').onclick=e=>{ if(e.target.id!=='pUnlock') return;
+  const ym=$('pMonth').value;
+  if(prompt('Unlocking lets attendance for this month be changed again and payroll will recalculate from the live data.\nType UNLOCK to confirm.')!=='UNLOCK') return;
+  delete DB.locks[ym]; DB.lockLog.push({ym,action:'unlock',at:Date.now()}); save(); renderPayroll(); toast('Month unlocked'); };
 $('pMonth').onchange=renderPayroll; $('pQ').oninput=renderPayroll;
 $('pTbl').addEventListener('change',e=>{ const el=e.target; if(!el.classList.contains('ded')) return;
   const ym=$('pMonth').value; DB.deductions[ym]=DB.deductions[ym]||{}; DB.deductions[ym][el.dataset.id]=Math.max(0,+el.value||0); save(); renderPayroll(); });
@@ -542,7 +578,7 @@ $('pTbl').addEventListener('change',e=>{ const el=e.target; if(!el.classList.con
 $('pHrs').onclick=()=>{
   if(!window.XLSX){ alert('Excel export needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
   const ym=$('pMonth').value; if(!ym) return;
-  const P=monthPayroll(DB,ym), r2=v=>Math.round(v*100)/100, MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+ym.slice(5)-1];
+  const P=payrollFor(ym), r2=v=>Math.round(v*100)/100, MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+ym.slice(5)-1];
   const nDays=P.nDays, dayHdr=[], weekOf=[], weeks=[];
   for(let d=1;d<=nDays;d++){
     const ds=ym+'-'+String(d).padStart(2,'0'), dow=(dateObj(ds).getDay()+6)%7;   // Monday = 0
@@ -587,7 +623,7 @@ $('pXls').onclick=()=>{
       else r.push(d.code==='NJ'?'Not joined':'','',''); }
     reg.push(r); }
   const s2=XLSX.utils.aoa_to_sheet(reg); s2['!cols']=[{wch:9},{wch:20},{wch:14},{wch:9}];
-  const S=DB.settings, s3=XLSX.utils.aoa_to_sheet([['Setting','Value'],['Month',ym],['Per-day divisor',PAY.divisor],['OT rate (× hourly)',S.otMult],['Ignore OT below (min)',S.otMin],['Week-off work (× hourly)',S.woMult],['Holiday work (× hourly)',S.phMult],['Week-off paid',S.paidWO?'Yes':'No'],['Holiday paid',S.paidPH?'Yes':'No'],['Comp-off paid',S.paidCO?'Yes':'No'],['Statutory deductions','None'],['Hours columns','Decimal hours (1.5 = 1h 30m)'],['Generated',new Date().toLocaleString('en-IN')]]);
+  const S=payDB(ym).settings, s3=XLSX.utils.aoa_to_sheet([['Setting','Value'],['Month',ym],['Per-day divisor',PAY.divisor],['OT rate (× hourly)',S.otMult],['Ignore OT below (min)',S.otMin],['Week-off work (× hourly)',S.woMult],['Holiday work (× hourly)',S.phMult],['Week-off paid',S.paidWO?'Yes':'No'],['Holiday paid',S.paidPH?'Yes':'No'],['Comp-off paid',S.paidCO?'Yes':'No'],['Statutory deductions','None'],['Hours columns','Decimal hours (1.5 = 1h 30m)'],['Generated',new Date().toLocaleString('en-IN')]]);
   XLSX.utils.book_append_sheet(wb,s1,'Payroll'); XLSX.utils.book_append_sheet(wb,s2,'Attendance Register'); XLSX.utils.book_append_sheet(wb,s3,'Settings');
   XLSX.writeFile(wb,`Payroll_${ym}.xlsx`);
 };
@@ -753,7 +789,7 @@ $('aFile').onchange=e=>{
     if(!dateCols.length){ alert('No date columns found in the heading row.'); return; }
     const months=[...new Set(dateCols.map(x=>x.date.slice(0,7)))];
     const emap=Object.fromEntries(DB.employees.map(x=>[x.id.toLowerCase(),x]));
-    const warns=[], unknown=[], recs=[], blanks={};
+    const warns=[], unknown=[], blanks={}; let recs=[];
     const counts={P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0};
     const dataRows=rows.slice(hi+1).filter(rw=>String(rw[idCol]).trim() && !/^(in|out)$/i.test(String(rw[idCol]).trim()));
     /* dates on which the sheet marks a public holiday (so people who worked that day become "worked on holiday") */
@@ -781,7 +817,9 @@ $('aFile').onchange=e=>{
         counts[rec.status]++; recs.push({date:dc.date,id:emp.id,rec});
       }
     }
-    if(!recs.length){ alert('No attendance could be read from this file.'); return; }
+    const lockedN=recs.filter(x=>isLockedDate(x.date)).length;
+    if(lockedN){ const lm=[...new Set(recs.filter(x=>isLockedDate(x.date)).map(x=>x.date.slice(0,7)))].join(', '); recs=recs.filter(x=>!isLockedDate(x.date)); warns.unshift(`${lockedN} record(s) skipped because the month is locked (${lm}).`); }
+    if(!recs.length){ alert(lockedN?'That month is locked, so nothing can be imported.':'No attendance could be read from this file.'); return; }
     const overwrite=recs.filter(x=>DB.att[x.date]?.rows?.[x.id]).length;
     const empCount=new Set(recs.map(x=>x.id)).size;
     const blankLines=Object.entries(blanks).filter(([id,d])=>d.length).map(([id,d])=>`${id}: ${d.length} blank day${d.length>1?'s':''} (${d.length>6?d.slice(0,6).join(', ')+'…':d.join(', ')})`);
@@ -885,7 +923,7 @@ $('bkUp').onclick=()=>$('bkFile').click();
 $('bkFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.employees||!d.att||!d.shifts) throw new Error('Not a payroll backup file');
       if(!confirm(`Replace ALL current data with this backup?\n\n${d.employees.length} employees, ${Object.keys(d.att).length} days of attendance.`)) return;
-      DB=d; DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.deductions=DB.deductions||{}; DB.holidays=DB.holidays||[]; save().then(()=>location.reload()); }
+      DB=d; DB.settings={...DEFAULT_SETTINGS,...DB.settings}; DB.deductions=DB.deductions||{}; DB.holidays=DB.holidays||[]; DB.locks=DB.locks||{}; DB.lockLog=DB.lockLog||[]; save().then(()=>location.reload()); }
     catch(err){ alert('Could not restore: '+err.message); } };
   r.readAsText(f); e.target.value=''; };
 $('bkReset').onclick=()=>{ if(prompt('This deletes all employees and attendance for everyone using the demo. Type ERASE to confirm.')!=='ERASE') return;
