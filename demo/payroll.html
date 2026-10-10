@@ -132,7 +132,7 @@ input.ded{width:100px;text-align:right}
   <div id="pWarn" class="warnbox hidden"></div>
   <div class="stats" id="pStats"></div>
   <div class="card"><div class="tw"><table id="pTbl"></table></div>
-  <div class="hint" style="margin-top:8px">Per day = Salary ÷ <span id="pDiv"></span>. Hourly = per day ÷ that day's shift hours. OT = time outside the shift (before start / after end) on days where OT is approved; late arrival / early leaving is deducted. Week-off / holiday work = hours × hourly × multiplier. No statutory deductions. Type advances or other deductions directly in the Deductions column — saved automatically.</div></div>
+  <div class="hint" style="margin-top:8px">Per day = Salary ÷ <span id="pDiv"></span>. Hourly = per day ÷ 8 standard hours (or the employee's own pay hours if in the Special category). OT = time outside the shift (before start / after end) on days where OT is approved; late arrival / early leaving is deducted. Week-off / holiday work = hours × hourly × multiplier. No statutory deductions. Type advances or other deductions directly in the Deductions column — saved automatically.</div></div>
 </section>
 
 <!-- EMPLOYEES -->
@@ -166,6 +166,7 @@ input.ded{width:100px;text-align:right}
       <label class="f">Per-day rate = Salary ÷
         <select id="stDiv"><option value="month">Days in the month (28–31)</option><option value="30">30</option><option value="26">26</option></select></label>
       <p class="hint" style="grid-column:1/-1">Late arrival and early leaving are deducted in proportion to the shift length (e.g. 2 hrs late on a 10-hr shift = 20% of the day). Time before the shift start or after the shift end counts as overtime only on days where "OT approved" is ticked in Daily Attendance. Week-off work is paid at the week-off rate only if the person has no Absent in the 7 days before; otherwise it is paid as a normal day.</p>
+      <label class="f">Standard hours per day (hourly rate = day rate ÷ this)<input id="stHrs" type="number" step="0.5" min="1" max="24"></label>
       <label class="f">OT rate (× hourly)<input id="stOt" type="number" step="0.25" min="0"></label>
       <label class="f">Ignore OT below (minutes per day)<input id="stOtMin" type="number" step="5" min="0"></label>
       <label class="f">Week-off work rate (× hourly)<input id="stWo" type="number" step="0.25" min="0"></label>
@@ -264,11 +265,16 @@ function monthPayroll(db, ym){
     const o={emp:e, P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0, notMarked:0, notJoined:0,
              worked:0, ot:0, short:0, woMin:0, phMin:0, wwCancel:0, shortDays:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
     o.perDay = (+e.salary||0)/divisor;
+    /* Hourly rate = day rate ÷ standard hours (8). Employees in the Special salary category use their own pay hours (e.g. 10). */
+    const basis = e.salCat==='special' ? (+e.hrsDay||10) : (+set.stdHours||8);
+    o.hourly = o.perDay/basis;
+    const lw = e.status==='Inactive' && e.lwd ? e.lwd : null;   // last working date: nothing counts after it
     for(let d=1; d<=nDays; d++){
       const date=ymd(Y,M,d), rec=db.att[date]?.rows?.[e.id];
       const submitted=!!db.att[date]?.submitted;
       if(e.doj && date<e.doj){ o.notJoined++; o.days.push({date,code:'NJ'}); continue; }
-      if((!rec || !submitted) && holMap[date] && e.status==='Active'){ o.PH++; o.days.push({date,code:'PH',holiday:holMap[date],auto:true}); continue; }   // declared holiday, nothing marked: paid holiday
+      if(lw && date>lw){ o.notJoined++; o.days.push({date,code:'NJ',left:true}); continue; }
+      if((!rec || !submitted) && holMap[date] && (e.status==='Active'||lw)){ o.PH++; o.days.push({date,code:'PH',holiday:holMap[date],auto:true}); continue; }   // declared holiday, nothing marked: paid holiday
       if(!rec || !submitted){ if(date<=today) o.notMarked++; o.days.push({date,code:'NM'}); continue; }
       o.anyRec=true;
       const sh=shiftById[rec.shift];
@@ -282,9 +288,9 @@ function monthPayroll(db, ym){
       }
       o[ev.status]++;
       const c=dayCalc(ev,sh,set);
-      const hourly = sh? o.perDay/(shiftLen(sh)/60) : 0;
+      const hourly = o.hourly;
       o.worked+=c.worked; o.ot+=c.ot; o.short+=c.short;
-      if(ev.status==='P' && set.deductShort!==false && sh && c.short) o.shortDays+=c.short/shiftLen(sh);
+      if(ev.status==='P' && set.deductShort!==false && sh && c.short) o.shortDays+=Math.min(1,c.short/60/basis);
       o.otPay += hourly*(c.ot/60)*set.otMult;
       if(ev.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
       if(ev.status==='PW'){ o.phMin+=c.worked; o.phPay+=hourly*(c.worked/60)*set.phMult; }
@@ -296,7 +302,7 @@ function monthPayroll(db, ym){
     o.gross = o.base + o.otPay + o.woPay + o.phPay;
     o.ded = +(db.deductions[ym]?.[e.id]||0);
     o.net = o.gross - o.ded;
-    if(e.status==='Active' || o.anyRec) out.push(o);
+    if(e.status==='Active' || o.anyRec || (lw && lw>=ymd(Y,M,1))) out.push(o);
   }
   return {rows:out, divisor, nDays};
 }
@@ -334,7 +340,7 @@ const SEED_EMPS=[
   ['ORW-13','SUMAN','Helper',24000,'Active','s2'],
   ['ORW-14','SUKUR ALAM','Helper',24000,'Active','s2'],
 ].map(([id,name,role,salary,status,shift])=>({id,name,role,salary,status,shift,doj:'',weekOff:0}));
-const DEFAULT_SETTINGS={company:'',divisor:'month',otMult:1,otMin:0,deductShort:true,woMult:2,phMult:2,paidWO:true,paidPH:true,paidCO:true};
+const DEFAULT_SETTINGS={company:'',divisor:'month',otMult:1,otMin:0,stdHours:8,deductShort:true,woMult:2,phMult:2,paidWO:true,paidPH:true,paidCO:true};
 
 let DB, REV=0, SAVING=Promise.resolve();
 const API=/pskservices\.co\.in$/.test(location.hostname)?'https://api.pskservices.co.in':'http://localhost:8787';
@@ -405,7 +411,7 @@ function lastShiftFor(empId, before){
 }
 function empsForDate(date){
   const rec=DB.att[date]?.rows||{};
-  return DB.employees.filter(e=> rec[e.id] || (e.status==='Active' && (!e.doj || e.doj<=date)));
+  return DB.employees.filter(e=> rec[e.id] || ((e.status==='Active' || (e.status==='Inactive' && e.lwd && e.lwd>=date)) && (!e.doj || e.doj<=date)));
 }
 function openDay(date){
   if(DIRTY && CUR!==date && !confirm('You have unsaved changes for '+prettyDate(CUR)+'. Discard them?')) { $('dDate').value=CUR; return; }
@@ -510,7 +516,7 @@ $('rTbl').onclick=e=>{ const th=e.target.closest('th[data-d]'); if(!th) return; 
 let PAY=null;
 const PCOLS=[
   ['Crew ID',o=>o.emp.id],['Name',o=>o.emp.name],['Role',o=>o.emp.role],
-  ['Salary',o=>+o.emp.salary,'m'],['Per Day',o=>o.perDay,'m'],
+  ['Salary',o=>+o.emp.salary,'m'],['Per Day',o=>o.perDay,'m'],['Per Hour',o=>o.hourly,'m'],
   ['Present',o=>o.P,'n'],['Half Day',o=>o.HD,'n'],['Week-off',o=>o.WO,'n'],['Holiday',o=>o.PH,'n'],['Comp-off',o=>o.CO,'n'],
   ['Absent',o=>o.A,'n'],['Not Marked',o=>o.notMarked,'n'],['Paid Days',o=>o.paidDays,'n'],
   ['Base Pay',o=>o.base,'m'],
@@ -529,6 +535,7 @@ function renderPayroll(){
   const msgs=[];
   const unsub=[]; for(let d=1;d<=PAY.nDays;d++){ const ds=ym+'-'+String(d).padStart(2,'0'); if(ds<=localISO(new Date())&&!DB.att[ds]?.submitted) unsub.push(d); }
   if(unsub.length) msgs.push(`Attendance not submitted for ${unsub.length} day(s): ${unsub.join(', ')}. Those days are unpaid until submitted.`);
+  const noLwd=PAY.rows.filter(o=>o.emp.status==='Inactive'&&!o.emp.lwd); if(noLwd.length) msgs.push('Inactive without a last working date (add it in Employees): '+noLwd.map(o=>o.emp.id).join(', '));
   if(errs.length) msgs.push('Check times for: '+errs.map(o=>o.emp.id+' ('+o.errs.join('; ')+')').join(' · '));
   const LK=lockOf(ym);
   $('pLock').classList.toggle('hidden',!!LK);
@@ -545,7 +552,7 @@ function renderPayroll(){
       return `<td class="${c[2]?'n':''}">${c[2]==='m'?money(v):c[2]==='h'?fmtHM(v):c[2]==='n'?(v||''):esc(v)}</td>`;}).join('')+'</tr>';
   }
   h+='<tr class="tot">'+PCOLS.map((c,i)=>{ if(i===0) return '<td>Total</td>'; if(i===1) return `<td>${rows.length} crew</td>`;
-    if(['m','ded'].includes(c[2]) && c[0]!=='Per Day' && c[0]!=='Salary') return `<td class="n">${money(sum(c[1]))}</td>`;
+    if(['m','ded'].includes(c[2]) && c[0]!=='Per Day' && c[0]!=='Per Hour' && c[0]!=='Salary') return `<td class="n">${money(sum(c[1]))}</td>`;
     if(c[2]==='h') return `<td class="n">${fmtHM(sum(c[1]))}</td>`; return '<td></td>'; }).join('')+'</tr>';
   $('pTbl').innerHTML=h+'</tbody>';
 }
@@ -620,7 +627,7 @@ $('pXls').onclick=()=>{
   for(const o of PAY.rows){ const r=[o.emp.id,o.emp.name,o.emp.role,+o.emp.salary];
     for(const d of o.days){ if(d.rec){ const sh=DB.shifts.find(s=>s.id===d.rec.shift); const code=ST[d.rec.status];
         if(code.times) r.push((sh?sh.name:'')+(d.rec.status!=='P'?' ['+d.rec.status+']':''), t12(d.rec.in), t12(d.rec.out)); else r.push(code.label,'',''); }
-      else r.push(d.code==='NJ'?'Not joined':'','',''); }
+      else r.push(d.code==='NJ'?(d.left?'Left':'Not joined'):'','',''); }
     reg.push(r); }
   const s2=XLSX.utils.aoa_to_sheet(reg); s2['!cols']=[{wch:9},{wch:20},{wch:14},{wch:9}];
   const S=payDB(ym).settings, s3=XLSX.utils.aoa_to_sheet([['Setting','Value'],['Month',ym],['Per-day divisor',PAY.divisor],['OT rate (× hourly)',S.otMult],['Ignore OT below (min)',S.otMin],['Week-off work (× hourly)',S.woMult],['Holiday work (× hourly)',S.phMult],['Week-off paid',S.paidWO?'Yes':'No'],['Holiday paid',S.paidPH?'Yes':'No'],['Comp-off paid',S.paidCO?'Yes':'No'],['Statutory deductions','None'],['Hours columns','Decimal hours (1.5 = 1h 30m)'],['Generated',new Date().toLocaleString('en-IN')]]);
@@ -661,10 +668,10 @@ $('pSlips').onclick=()=>{
 /* =====================  EMPLOYEES  ===================== */
 function renderEmps(){
   const show=$('eShowIn').checked, sh=Object.fromEntries(DB.shifts.map(s=>[s.id,s]));
-  let h='<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th class="n">Salary</th><th>Default shift</th><th>Weekly off</th><th>Date of joining</th><th>Status</th><th></th></tr></thead><tbody>';
+  let h='<thead><tr><th>Crew ID</th><th>Name</th><th>Role</th><th class="n">Salary</th><th>Default shift</th><th>Weekly off</th><th>Date of joining</th><th>Pay basis</th><th>Status</th><th></th></tr></thead><tbody>';
   for(const e of DB.employees.filter(e=>show||e.status==='Active'))
     h+=`<tr class="${e.status!=='Active'?'dim':''}"><td><b>${esc(e.id)}</b></td><td>${esc(e.name)}</td><td>${esc(e.role)}</td><td class="n">${money(e.salary)}</td><td>${sh[e.shift]?esc(shiftLabel(sh[e.shift])):'—'}</td>
-      <td>${e.weekOff===''||e.weekOff==null?'None':DOW[e.weekOff]}</td><td>${e.doj?prettyDate(e.doj):'—'}</td><td>${esc(e.status)}</td>
+      <td>${e.weekOff===''||e.weekOff==null?'None':DOW[e.weekOff]}</td><td>${e.doj?prettyDate(e.doj):'—'}</td><td>${e.salCat==='special'?esc((+e.hrsDay||10)+' hrs (special)'):(+DB.settings.stdHours||8)+' hrs'}</td><td>${esc(e.status)}${e.status==='Inactive'?(e.lwd?'<br><span class="hint">LWD '+prettyDate(e.lwd)+'</span>':'<br><span class="hint" style="color:var(--bad)">LWD missing</span>'):''}</td>
       <td><button class="b s sm" data-edit="${esc(e.id)}">Edit</button></td></tr>`;
   $('eTbl').innerHTML=h+'</tbody>';
 }
@@ -679,11 +686,11 @@ $('logoutBtn').onclick=()=>{
 };
 
 /* ---------- bulk employee import from Excel ---------- */
-const IMP_COLS=['Crew ID','Name','Role','Monthly Salary','Shift','Weekly Off','Date of Joining','Status'];
+const IMP_COLS=['Crew ID','Name','Role','Monthly Salary','Shift','Weekly Off','Date of Joining','Status','Last Working Date','Salary Category','Pay Hours'];
 $('eTpl').onclick=()=>{
   if(!window.XLSX){ alert('Excel needs internet the first time (or xlsx.full.min.js in the same folder).'); return; }
   const sh=DB.shifts[0]?DB.shifts[0].name:'';
-  const ws=XLSX.utils.aoa_to_sheet([IMP_COLS,['EMP-01','Sample Name','Welder',25000,sh,'Sunday','2024-04-01','Active']]);
+  const ws=XLSX.utils.aoa_to_sheet([IMP_COLS,['EMP-01','Sample Name','Welder',25000,sh,'Sunday','2024-04-01','Active','','Standard','']]);
   ws['!cols']=IMP_COLS.map(c=>({wch:Math.max(14,c.length+2)}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Employees');
   XLSX.writeFile(wb,'Employee_Import_Template.xlsx');
@@ -706,7 +713,7 @@ $('eFile').onchange=e=>{
     try{ const wb=XLSX.read(r.result,{type:'array'}); rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
     catch(err){ alert('Could not read that file: '+err.message); return; }
     const norm=x=>String(x).toLowerCase().replace(/[^a-z]/g,'');
-    const aliases={crewid:'id',id:'id',employeeid:'id',empid:'id',name:'name',employeename:'name',role:'role',designation:'role',monthlysalary:'salary',salary:'salary',shift:'shift',defaultshift:'shift',weeklyoff:'wo',weekoff:'wo',dateofjoining:'doj',doj:'doj',joiningdate:'doj',status:'status'};
+    const aliases={crewid:'id',id:'id',employeeid:'id',empid:'id',name:'name',employeename:'name',role:'role',designation:'role',monthlysalary:'salary',salary:'salary',shift:'shift',defaultshift:'shift',weeklyoff:'wo',weekoff:'wo',dateofjoining:'doj',doj:'doj',joiningdate:'doj',status:'status',lastworkingdate:'lwd',lwd:'lwd',salarycategory:'cat',category:'cat',payhours:'hrs',hoursperday:'hrs'};
     const hi=rows.findIndex(rw=>rw.some(c=>aliases[norm(c)]==='id'));
     if(hi<0){ alert('No "Crew ID" column found. Download the template and use its column headings.'); return; }
     const col={}; rows[hi].forEach((c,i)=>{ const k=aliases[norm(c)]; if(k&&!(k in col)) col[k]=i; });
@@ -728,8 +735,13 @@ $('eFile').onchange=e=>{
       let wo=''; if(woTxt&&woTxt!=='none'){ const k=days.findIndex(d=>d===woTxt||d.slice(0,3)===woTxt.slice(0,3)); if(k<0) err.push('Weekly Off "'+g(rw,'wo')+'" not understood'); else wo=k; }
       const stTxt=String(g(rw,'status')).trim().toLowerCase();
       if(stTxt&&stTxt!=='active'&&stTxt!=='inactive') err.push('Status must be Active or Inactive');
+      const lwd=impDate(g(rw,'lwd')); if(lwd===null) err.push('Last Working Date not understood');
+      if(stTxt==='inactive'&&!lwd) err.push('Last Working Date required for Inactive');
+      const catTxt=String(g(rw,'cat')).trim().toLowerCase(), hrs=+String(g(rw,'hrs')).trim();
+      if(catTxt&&!['standard','special'].includes(catTxt)) err.push('Salary Category must be Standard or Special');
+      if(catTxt==='special'&&String(g(rw,'hrs')).trim()!==''&&!(hrs>0&&hrs<=24)) err.push('Pay Hours must be 1–24');
       if(err.length){ bad.push(`Row ${line}: ${err.join('; ')}`); return; }
-      good.push({id,name,role:String(g(rw,'role')).trim(),salary:sal,shift:shiftBy[shTxt]||DB.shifts[0]?.id,weekOff:wo,doj,status:stTxt==='inactive'?'Inactive':'Active'});
+      good.push({id,name,role:String(g(rw,'role')).trim(),salary:sal,shift:shiftBy[shTxt]||DB.shifts[0]?.id,weekOff:wo,doj,status:stTxt==='inactive'?'Inactive':'Active',lwd:stTxt==='inactive'?lwd:'',salCat:catTxt==='special'?'special':'standard',hrsDay:catTxt==='special'?(hrs>0?hrs:10):''});
     });
     const have=new Set(DB.employees.map(x=>x.id.toLowerCase()));
     const upd=good.filter(x=>have.has(x.id.toLowerCase())).length, add=good.length-upd;
@@ -853,10 +865,15 @@ function empForm(emp){
    <label class="f">Default shift<select id="fShift">${DB.shifts.map(s=>`<option value="${s.id}" ${s.id===e.shift?'selected':''}>${esc(shiftLabel(s))}</option>`).join('')}</select></label>
    <label class="f">Weekly off<select id="fWo"><option value="">None</option>${DOW.map((d,i)=>`<option value="${i}" ${String(e.weekOff)===String(i)?'selected':''}>${d}</option>`).join('')}</select></label>
    <label class="f">Date of joining<input id="fDoj" type="date" value="${esc(e.doj)}"></label>
-   <label class="f">Status<select id="fSt"><option ${e.status==='Active'?'selected':''}>Active</option><option ${e.status==='Inactive'?'selected':''}>Inactive</option></select></label></div>
-   <p class="hint">Default shift is used the first time; after that the daily page remembers each person's last shift.</p>
+   <label class="f">Status<select id="fSt"><option ${e.status==='Active'?'selected':''}>Active</option><option ${e.status==='Inactive'?'selected':''}>Inactive</option></select></label>
+   <label class="f" id="fLwdL">Last working date *<input id="fLwd" type="date" value="${esc(e.lwd||'')}"></label>
+   <label class="f">Salary category<select id="fCat"><option value="standard" ${e.salCat!=='special'?'selected':''}>Standard (hourly rate = day rate ÷ ${+DB.settings.stdHours||8})</option><option value="special" ${e.salCat==='special'?'selected':''}>Special (own pay hours per day)</option></select></label>
+   <label class="f" id="fHrsL">Pay hours per day (special)<input id="fHrs" type="number" min="1" max="24" step="0.5" value="${esc(e.hrsDay||10)}"></label></div>
+   <p class="hint">Last working date: salary and overtime are calculated up to and including this date. Special category: e.g. a 10-hour crew has an hourly rate of day rate ÷ 10. Default shift is used the first time; after that the daily page remembers each person's last shift.</p>
    <div class="row" style="margin-top:14px">${emp?'<button class="b d" id="fDel">Delete</button>':''}<span class="sp"></span><button class="b s" id="fCancel">Cancel</button><button class="b" id="fSave">Save</button></div>`;
   $('modal').classList.remove('hidden');
+  const sync=()=>{ $('fLwdL').classList.toggle('hidden',$('fSt').value!=='Inactive'); $('fHrsL').classList.toggle('hidden',$('fCat').value!=='special'); };
+  $('fSt').onchange=sync; $('fCat').onchange=sync; sync();
   $('fCancel').onclick=closeModal;
   if(emp) $('fDel').onclick=()=>{ if(!confirm(`Delete ${emp.name}? Past attendance stays in records, but they will disappear from lists. Marking them Inactive is usually better.`)) return;
     DB.employees=DB.employees.filter(x=>x!==emp); save(); closeModal(); renderEmps(); };
@@ -864,7 +881,11 @@ function empForm(emp){
     const id=$('fId').value.trim(), name=$('fName').value.trim(), sal=+$('fSal').value;
     if(!id||!name||!(sal>0)){ alert('Crew ID, Name and Salary are required.'); return; }
     if(!emp && DB.employees.some(x=>x.id.toLowerCase()===id.toLowerCase())){ alert('That Crew ID already exists.'); return; }
-    const rec={id,name,role:$('fRole').value.trim(),salary:sal,shift:$('fShift').value,weekOff:$('fWo').value===''?'':+$('fWo').value,doj:$('fDoj').value,status:$('fSt').value};
+    const inactive=$('fSt').value==='Inactive', lwd=$('fLwd').value, special=$('fCat').value==='special', hrs=+$('fHrs').value;
+    if(inactive&&!lwd){ alert('Please enter the last working date for an Inactive employee.'); return; }
+    if(special&&!(hrs>0&&hrs<=24)){ alert('Enter the pay hours per day for the Special category.'); return; }
+    if(lwd&&$('fDoj').value&&lwd<$('fDoj').value){ alert('Last working date is before the date of joining.'); return; }
+    const rec={id,name,role:$('fRole').value.trim(),salary:sal,shift:$('fShift').value,weekOff:$('fWo').value===''?'':+$('fWo').value,doj:$('fDoj').value,status:$('fSt').value,lwd:inactive?lwd:'',salCat:special?'special':'standard',hrsDay:special?hrs:''};
     if(emp) Object.assign(emp,rec); else DB.employees.push(rec);
     save(); closeModal(); renderEmps(); if(CUR&&!DIRTY) openDay(CUR); toast('Employee saved');
   };
@@ -887,7 +908,7 @@ $('sTbl').addEventListener('click',e=>{ const id=e.target.dataset.del; if(!id) r
 $('sAdd').onclick=()=>{ DB.shifts.push({id:'s'+Date.now(),name:'New shift',start:'09:00',end:'18:00'}); save(); renderShifts(); };
 
 /* =====================  SETTINGS / BACKUP  ===================== */
-const SETMAP={stCo:'company',stDiv:'divisor',stOt:'otMult',stOtMin:'otMin',stWo:'woMult',stPh:'phMult',stDS:'deductShort',stPWO:'paidWO',stPPH:'paidPH',stPCO:'paidCO'};
+const SETMAP={stCo:'company',stDiv:'divisor',stHrs:'stdHours',stOt:'otMult',stOtMin:'otMin',stWo:'woMult',stPh:'phMult',stDS:'deductShort',stPWO:'paidWO',stPPH:'paidPH',stPCO:'paidCO'};
 function renderHolidays(){
   const today=localISO(new Date()), showPast=$('hPast').checked;
   const list=[...DB.holidays].sort((a,b)=>a.date.localeCompare(b.date)).filter(h=>showPast||h.date>=today);
