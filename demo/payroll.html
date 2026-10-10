@@ -165,7 +165,7 @@ input.ded{width:100px;text-align:right}
       <label class="f">Company name (for payslips)<input id="stCo"></label>
       <label class="f">Per-day rate = Salary ÷
         <select id="stDiv"><option value="month">Days in the month (28–31)</option><option value="30">30</option><option value="26">26</option></select></label>
-      <p class="hint" style="grid-column:1/-1">Late arrival and early leaving are deducted in proportion to the shift length (e.g. 2 hrs late on a 10-hr shift = 20% of the day). Time before the shift start or after the shift end counts as overtime only on days where "OT approved" is ticked in Daily Attendance. Week-off work is paid at the week-off rate only if the person has no Absent in the 7 days before; otherwise it is paid as a normal day.</p>
+      <p class="hint" style="grid-column:1/-1">Late arrival and early leaving are deducted in proportion to the shift length (e.g. 2 hrs late on a 10-hr shift = 20% of the day). Time before the shift start or after the shift end counts as overtime only on days where "OT approved" is ticked in Daily Attendance. Week-off work is paid at the week-off rate only if the person has no Absent in the 7 days before; otherwise it is paid as a normal day. A week-off is not paid (counted as Absent) when the person was Absent on both the day before and the day after it.</p>
       <label class="f">Standard hours per day (hourly rate = day rate ÷ this)<input id="stHrs" type="number" step="0.5" min="1" max="24"></label>
       <label class="f">OT rate (× hourly)<input id="stOt" type="number" step="0.25" min="0"></label>
       <label class="f">Ignore OT below (minutes per day)<input id="stOtMin" type="number" step="5" min="0"></label>
@@ -263,7 +263,7 @@ function monthPayroll(db, ym){
   const out=[];
   for(const e of db.employees){
     const o={emp:e, P:0,HD:0,A:0,WO:0,WW:0,PH:0,PW:0,CO:0, notMarked:0, notJoined:0,
-             worked:0, ot:0, short:0, woMin:0, phMin:0, wwCancel:0, shortDays:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
+             worked:0, ot:0, short:0, woMin:0, phMin:0, wwCancel:0, woLost:0, shortDays:0, otPay:0, woPay:0, phPay:0, errs:[], anyRec:false, days:[]};
     o.perDay = (+e.salary||0)/divisor;
     /* Hourly rate = day rate ÷ standard hours (8). Employees in the Special salary category use their own pay hours (e.g. 10). */
     const basis = e.salCat==='special' ? (+e.hrsDay||10) : (+set.stdHours||8);
@@ -286,6 +286,8 @@ function monthPayroll(db, ym){
         if(rec.status==='P' && onWO) ev={...rec,status:'WW'};                                  // came in on the weekly off
         if(ev.status==='WW' && absentInPrevWeek(db,e.id,date)){ ev={...rec,status:'P'}; cancelled=true; o.wwCancel++; }
       }
+      let woLost=false;
+      if(rec.status==='WO' && absentAround(db,e.id,date)){ ev={...rec,status:'A'}; woLost=true; o.woLost++; }   // absent before and after the week-off: counted as absent, not paid
       o[ev.status]++;
       const c=dayCalc(ev,sh,set);
       const hourly = o.hourly;
@@ -295,7 +297,7 @@ function monthPayroll(db, ym){
       if(ev.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
       if(ev.status==='PW'){ o.phMin+=c.worked; o.phPay+=hourly*(c.worked/60)*set.phMult; }
       if(c.err) o.errs.push(date.slice(8)+': '+c.err);
-      o.days.push({date,code:ev.status,rec,calc:c,wwCancelled:cancelled,holiday:holMap[date]});
+      o.days.push({date,code:ev.status,rec,calc:c,wwCancelled:cancelled,woLost,holiday:holMap[date]});
     }
     o.paidDays = o.P + 0.5*o.HD + (set.paidWO?o.WO:0) + (set.paidPH?o.PH:0) + (set.paidCO?o.CO:0) - o.shortDays;
     o.base = o.perDay*o.paidDays;
@@ -311,6 +313,11 @@ function absentInPrevWeek(db,empId,date){
   for(let k=1;k<=7;k++){ const ds=localISO(new Date(y,m-1,d-k)), a=db.att[ds];
     if(a?.submitted && a.rows?.[empId]?.status==='A') return true; }
   return false;
+}
+/* Week-off is not paid when the person was Absent on both the day before and the day after it. */
+function absentAround(db,empId,date){
+  const [y,m,d]=date.split('-').map(Number), absent=k=>{ const a=db.att[localISO(new Date(y,m-1,d+k))]; return !!(a?.submitted && a.rows?.[empId]?.status==='A'); };
+  return absent(-1) && absent(1);
 }
 function localISO(d){ return ymd(d.getFullYear(),d.getMonth()+1,d.getDate()); }
 /* =====================  END ENGINE  ===================== */
@@ -502,8 +509,8 @@ function renderRegister(){
   for(const o of P.rows){
     h+=`<tr><td class="l"><b>${esc(o.emp.id)}</b> ${esc(o.emp.name)}</td>`;
     for(const d of o.days){
-      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}${d.calc.short?' · short '+fmtHM(d.calc.short):''}${d.rec.eot?' · OT approved':''}${d.rec.note?' · Note: '+d.rec.note:''}${d.wwCancelled?' · worked on week-off, paid as normal day (absent in previous 7 days)':''}`:'';
-      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.wwCancelled?'*':''}${d.calc?.ot?'<sup>+</sup>':''}${d.rec?.note?'<sup>✎</sup>':''}</td>`;
+      const code=d.code, tip=d.rec&&d.rec.in?`${t12(d.rec.in)}–${t12(d.rec.out)}${d.calc.ot?' · OT '+fmtHM(d.calc.ot):''}${d.calc.short?' · short '+fmtHM(d.calc.short):''}${d.rec.eot?' · OT approved':''}${d.rec.note?' · Note: '+d.rec.note:''}${d.wwCancelled?' · worked on week-off, paid as normal day (absent in previous 7 days)':''}${d.woLost?' · week-off not paid (absent the day before and after)':''}`:'';
+      h+=`<td class="c-${code}" title="${esc(tip)}">${code==='NJ'||code==='NM'?'·':code}${d.wwCancelled||d.woLost?'*':''}${d.calc?.ot?'<sup>+</sup>':''}${d.rec?.note?'<sup>✎</sup>':''}</td>`;
     }
     h+=`<td>${o.P+o.HD*0.5}</td><td>${o.A}</td><td>${fmtHM(o.ot)}</td></tr>`;
   }
@@ -518,7 +525,7 @@ const PCOLS=[
   ['Crew ID',o=>o.emp.id],['Name',o=>o.emp.name],['Role',o=>o.emp.role],
   ['Salary',o=>+o.emp.salary,'m'],['Per Day',o=>o.perDay,'m'],['Per Hour',o=>o.hourly,'m'],
   ['Present',o=>o.P,'n'],['Half Day',o=>o.HD,'n'],['Week-off',o=>o.WO,'n'],['Holiday',o=>o.PH,'n'],['Comp-off',o=>o.CO,'n'],
-  ['Absent',o=>o.A,'n'],['Not Marked',o=>o.notMarked,'n'],['Paid Days',o=>o.paidDays,'n'],
+  ['Absent',o=>o.A,'n'],['WO Not Paid',o=>o.woLost,'n'],['Not Marked',o=>o.notMarked,'n'],['Paid Days',o=>o.paidDays,'n'],
   ['Base Pay',o=>o.base,'m'],
   ['OT Hrs',o=>o.ot,'h'],['OT Pay',o=>o.otPay,'m'],['Short Hrs',o=>o.short,'h'],['Short Deduction',o=>o.shortDays*o.perDay,'m'],
   ['WO Worked',o=>o.WW,'n'],['WO Cancelled',o=>o.wwCancel,'n'],['WO Hrs',o=>o.woMin,'h'],['WO Pay',o=>o.woPay,'m'],
