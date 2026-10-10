@@ -294,8 +294,11 @@ function monthPayroll(db, ym){
       o.worked+=c.worked; o.ot+=c.ot; o.short+=c.short;
       if(ev.status==='P' && set.deductShort!==false && sh && c.short) o.shortDays+=Math.min(1,c.short/60/basis);
       o.otPay += hourly*(c.ot/60)*set.otMult;
-      if(ev.status==='WW'){ o.woMin+=c.worked; o.woPay+=hourly*(c.worked/60)*set.woMult; }
-      if(ev.status==='PW'){ o.phMin+=c.worked; o.phPay+=hourly*(c.worked/60)*set.phMult; }
+      /* Week-off / holiday work is paid on production hours: the break built into a longer shift (shift length minus the pay hours, e.g. 9h shift = 8h + 1h break) is not paid. */
+      let payMin=c.worked;
+      if((ev.status==='WW'||ev.status==='PW') && sh) payMin=Math.max(0,c.worked-Math.max(0,shiftLen(sh)-basis*60));
+      if(ev.status==='WW'){ o.woMin+=payMin; o.woPay+=hourly*(payMin/60)*set.woMult; }
+      if(ev.status==='PW'){ o.phMin+=payMin; o.phPay+=hourly*(payMin/60)*set.phMult; }
       if(c.err) o.errs.push(date.slice(8)+': '+c.err);
       o.days.push({date,code:ev.status,rec,calc:c,wwCancelled:cancelled,woLost,holiday:holMap[date]});
     }
